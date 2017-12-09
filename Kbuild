@@ -1,0 +1,3 @@
+obj-m += xapea00x.o
+
+xapea00x-y += xapea00x-backports.o xapea00x-core.o

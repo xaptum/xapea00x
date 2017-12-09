@@ -1,0 +1,21 @@
+#
+# XAP-EA-00x
+#
+
+config  XAPEA00X
+        tristate "Xaptum ENF Access Module"
+        depends on USB_SUPPORT
+        select SPI
+        select TCG_TPM
+        select TCG_TIS_SPI
+        ---help---
+
+          Say Y here if you want to support the Xaptum ENF Access
+          modules (XAP-EA-00x) in the USB or Mini PCI-e form
+          factors. The XAP-EA-00x module exposes a TPM 2.0 as
+          /dev/tpmX to use for authenticating with the Xaptum ENF.
+
+          To compile this driver as a module, choose M here. The
+          module will be called xapea00x.
+
+          If unsure, say M.
