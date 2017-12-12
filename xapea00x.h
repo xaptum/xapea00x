@@ -19,7 +19,9 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/kref.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/usb.h>
@@ -48,6 +50,8 @@
 #define XAPEA00X_TPM_MODALIAS          "tpm_tis_spi"
 
 struct xapea00x_device {
+	struct kref kref;
+
 	struct usb_device *udev;
 	struct usb_interface *interface;
 	struct usb_endpoint_descriptor *bulk_in;
@@ -56,6 +60,8 @@ struct xapea00x_device {
 	u16 vid;
 
 	struct spi_master *spi_master;
+	struct mutex spi_mutex;
+
 	struct spi_device *tpm;
 	struct work_struct tpm_probe;
 };
@@ -77,4 +83,3 @@ int xapea00x_spi_transfer(struct xapea00x_device *dev,
 
 /* Shared TPM functions */
 int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev);
-
