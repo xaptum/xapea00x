@@ -178,7 +178,7 @@ static int xapea00x_bulk_write(struct xapea00x_device *dev,
 	int buf_len, actual_len, retval;
 
 	buf_len = sizeof(struct xapea00x_bulk_command) + len;
-	buf = kmalloc(buf_len, GFP_KERNEL);
+	buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!buf)
 	{
 		retval = -ENOMEM;
@@ -201,7 +201,7 @@ static int xapea00x_bulk_write(struct xapea00x_device *dev,
 	retval = 0;
 
 free_buf:
-	kfree(buf);
+	kzfree(buf);
 
 out:
 	return retval;
@@ -222,7 +222,7 @@ static int xapea00x_bulk_read(struct xapea00x_device *dev, void* data, int len)
 	void *buf;
 	int actual_len, retval;
 
-	buf = kmalloc(len, GFP_KERNEL);
+	buf = kzalloc(len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
 		goto out;
@@ -242,7 +242,7 @@ static int xapea00x_bulk_read(struct xapea00x_device *dev, void* data, int len)
 	retval = 0;
 
 free_buf:
-	kfree(buf);
+	kzfree(buf);
 
 out:
 	return retval;
@@ -278,7 +278,7 @@ static int xapea00x_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	 * performance concerns given the small buffers and low
 	 * throughputs of this device.
 	 */
-	buf = kmalloc(len, GFP_KERNEL);
+	buf = kzalloc(len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
 		goto out;
@@ -298,7 +298,7 @@ static int xapea00x_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	retval = 0;
 
 free_buf:
-	kfree(buf);
+	kzfree(buf);
 
 out:
 	return retval;
@@ -1047,7 +1047,7 @@ static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
 		goto out;
 	}
 
-	buf = kmalloc(buflen, GFP_KERNEL);
+	buf = kzalloc(buflen, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
 		goto out;
@@ -1083,7 +1083,7 @@ static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
 free:
 	/* Zero and free the buffer; */
 	memset(buf, 0, buflen);
-	kfree(buf);
+	kzfree(buf);
 
 out:
 	return retval;
@@ -1187,7 +1187,7 @@ static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
 	int retval;
 
 	buf_len = len + 2;
-	buf = kmalloc(buf_len, GFP_KERNEL);
+	buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
 		goto out;
@@ -1223,7 +1223,7 @@ static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
 
 free:
 	memset(buf, 0, buf_len);
-	kfree(buf);
+	kzfree(buf);
 
 out:
 	return retval;
