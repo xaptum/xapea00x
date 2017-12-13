@@ -85,12 +85,6 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 	unsigned int pipe;
 	int buf_len, actual_len, retval;
 
-	mutex_lock(&dev->usb_mutex);
-	if (!dev->interface) {
-		retval = -ENODEV;
-		goto out;
-	}
-
 	buf_len = sizeof(struct xapea00x_br_bulk_command) + len;
 	buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!buf)
@@ -106,7 +100,7 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 	retval = usb_bulk_msg(dev->udev, pipe, buf, buf_len, &actual_len,
 	                      XAPEA00X_BR_USB_TIMEOUT);
 	if (retval) {
-		dev_warn(dev->dev,
+		dev_warn(&dev->interface->dev,
 		         "%s: usb_bulk_msg() failed with %d\n",
 		         __func__, retval);
 		goto free_buf;
@@ -118,7 +112,6 @@ free_buf:
 	kzfree(buf);
 
 out:
-	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -137,12 +130,6 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int le
 	void *buf;
 	int actual_len, retval;
 
-	mutex_lock(&dev->usb_mutex);
-	if (!dev->interface) {
-		retval = -ENODEV;
-		goto out;
-	}
-
 	buf = kzalloc(len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
@@ -154,8 +141,9 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int le
 	                      XAPEA00X_BR_USB_TIMEOUT);
 
 	if (retval) {
-		dev_warn(dev->dev, "%s: usb_bulk_msg() failed with %d\n",
-		          __func__, retval);
+		dev_warn(&dev->interface->dev,
+		         "%s: usb_bulk_msg() failed with %d\n",
+		         __func__, retval);
 		goto free_buf;
 	}
 
@@ -166,7 +154,6 @@ free_buf:
 	kzfree(buf);
 
 out:
-	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -194,12 +181,6 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	void *buf;
 	int retval;
 
-	mutex_lock(&dev->usb_mutex);
-	if (!dev->interface) {
-		retval = -ENODEV;
-		goto out;
-	}
-
 	/* control_msg buffer must be dma-capable (e.g.k kmalloc-ed,
 	 * not stack).	Copy data into such buffer here, so we can use
 	 * simpler stack allocation in the callers - we have no
@@ -218,8 +199,8 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	                         XAPEA00X_BR_BREQTYP_SET, wValue, wIndex,
 	                         buf, len, XAPEA00X_BR_USB_TIMEOUT);
 	if (retval < 0) {
-		dev_warn(dev->dev, "usb_control_msg() failed with %d\n",
-		         retval);
+		dev_warn(&dev->interface->dev,
+		         "usb_control_msg() failed with %d\n", retval);
 		goto free_buf;
 	}
 
@@ -229,7 +210,6 @@ free_buf:
 	kzfree(buf);
 
 out:
-	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 

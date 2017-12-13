@@ -609,7 +609,7 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 
 	retval = xapea00x_tpm_get_random(dev, sizeof(password), password);
 	if (retval) {
-		dev_err(dev->dev,
+		dev_err(&dev->interface->dev,
 			"TPM get random failed with %d\n", retval);
 		goto out;
 	}
@@ -648,20 +648,20 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	/* issue TPM2_CC_STARTUP command */
 	retval = xapea00x_tpm_startup(dev);
 	if (retval) {
-		dev_err(dev->dev, "TPM startup failed with %d\n",
+		dev_err(&dev->interface->dev, "TPM startup failed with %d\n",
 		        retval);
 		goto out;
 	}
-	dev_info(dev->dev, "TPM startup complete\n");
+	dev_info(&dev->interface->dev, "TPM startup complete\n");
 
 	/* issue TPM2_SELF_TEST command */
 	retval = xapea00x_tpm_self_test(dev);
 	if (retval) {
-		dev_err(dev->dev, "TPM self-test failed with %d\n",
+		dev_err(&dev->interface->dev, "TPM self-test failed with %d\n",
 		        retval);
 		goto out;
 	}
-	dev_info(dev->dev, "TPM self-test complete\n");
+	dev_info(&dev->interface->dev, "TPM self-test complete\n");
 
 	/* 
 	 * The TPM will enter dictionary lockout mode if turned off
@@ -674,7 +674,7 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	if (dev->pid == USB_PRODUCT_ID_XAPEA001) {
 		retval = xapea00x_tpm_dictionary_attack_lock_reset(dev);
 		if (retval) {
-			dev_err(dev->dev,
+			dev_err(&dev->interface->dev,
 			        "Resetting TPM lockout failed with %d\n", retval);
 			goto out;
 		}
@@ -683,7 +683,7 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	/* set the platform authorization to random bytes */
 	retval = xapea00x_tpm_randomize_platform_auth(dev);
 	if (retval) {
-		dev_err(dev->dev,
+		dev_err(&dev->interface->dev,
 	                "Setting TPM platform auth failed with %d\n",
 		        retval);
 		goto out;

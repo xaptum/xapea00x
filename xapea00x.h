@@ -33,22 +33,25 @@
 struct xapea00x_device {
 	struct kref kref;
 
-	struct device *dev;
 	struct usb_device *udev;
+	/*
+	 * The interface pointer will be set NULL when the device
+	 * disconnects.  Accessing it safe only while holding the
+	 * usb_mutex.
+	 */
 	struct usb_interface *interface;
+	/*
+	 * Th usb_mutex must be held while synchronous USB requests are
+	 * in progress. It is acquired during disconnect to be sure
+	 * that there is not an outstanding request.
+	 */
+	struct mutex usb_mutex;
 
 	struct usb_endpoint_descriptor *bulk_in;
 	struct usb_endpoint_descriptor *bulk_out;
 
 	u16 pid;
 	u16 vid;
-
-	/*
-	 * This mutex must be held while synchronous USB requests are
-	 * in progress. It is acquired during disconnect to be sure
-	 * that there is not an outstanding request.
-	 */
-	struct mutex usb_mutex;
 
 	struct spi_master *spi_master;
 	struct spi_device *tpm;
