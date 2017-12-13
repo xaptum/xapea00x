@@ -27,7 +27,7 @@ static void xapea00x_delete(struct kref *kref)
 {
     struct xapea00x_device *dev = kref_to_xapea00x(kref);
 
-    pr_notice("%s: free resources", __func__);
+    pr_notice("%s: free resources\n", __func__);
     
     usb_put_dev(dev->udev);
     kfree(dev);
@@ -57,29 +57,24 @@ static int xapea00x_spi_setup(struct spi_device *spi)
 		goto err;
 	}
       
-	/* Set the SPI parameters for the TPM channel. */
-	retval = xapea00x_br_set_spi_word(dev, 0, XAPEA00X_TPM_SPI_WORD);
-	if (retval)
-		goto err;
-
 	/*
 	 * Disable auto chip select for the TPM channel.
 	 * Must be done after setting the SPI parameters.
 	 */
-	retval = xapea00x_br_set_gpio_cs(dev, 0, XAPEA00X_GPIO_CS_DISABLED);
+	retval = xapea00x_br_disable_cs(dev, 0);
 	if (retval)
 		goto err;
 
 	/* De-assert chip select for the TPM channel. */
-	retval = xapea00x_br_set_gpio_value(dev, 0, 1);
+	retval = xapea00x_br_deassert_cs(dev, 0);
 	if (retval)
 		goto err;
 
-	dev_dbg(&dev->interface->dev, "configured spi channel for tpm\n");
+	dev_dbg(dev->dev, "configured spi channel for tpm\n");
 	return 0;
 
 err:
-	dev_err(&dev->interface->dev, "configuring SPI channel failed with %d\n", retval);
+	dev_err(dev->dev, "configuring SPI channel failed with %d\n", retval);
 	return retval;
 }
 
@@ -113,7 +108,7 @@ int xapea00x_spi_transfer(struct xapea00x_device *dev,
 	int retval;
 
 	/* Assert chip select */
-	retval = xapea00x_br_set_gpio_value(dev, 0, 0);
+	retval = xapea00x_br_assert_cs(dev, 0);
 	if (retval)
 		goto out;
 
@@ -136,7 +131,7 @@ int xapea00x_spi_transfer(struct xapea00x_device *dev,
 
 	/* Deassert chip select, if requested */
 	if (!cs_hold)
-		retval = xapea00x_br_set_gpio_value(dev, 0, 1);
+		retval = xapea00x_br_deassert_cs(dev, 0);
 
 	/* Delay for the requested time */
 	udelay(delay_usecs);
@@ -224,7 +219,7 @@ static int xapea00x_spi_probe(struct xapea00x_device *dev)
 		goto free_spi;
 
 	dev->spi_master = spi_master;
-	dev_dbg(&dev->interface->dev, "registered SPI master\n");
+	dev_dbg(dev->dev, "registered SPI master\n");
 
 	return 0;
 
@@ -236,6 +231,39 @@ err_out:
 	return retval;
 }
 
+struct xapea00x_async_probe {
+	struct work_struct work;
+	struct xapea00x_device *dev;
+};
+
+#define work_to_probe(w) container_of(w, struct xapea00x_async_probe, work)
+
+static void xapea00x_init_async_probe(struct xapea00x_async_probe *probe,
+                                      struct xapea00x_device *dev,
+                                      void (*f)(struct work_struct *work))
+{
+	INIT_WORK(&probe->work, f);
+	probe->dev = dev;
+
+	kref_get(&dev->kref);
+	spi_master_get(dev->spi_master);
+}
+
+static void xapea00x_free_async_probe(struct xapea00x_async_probe *probe)
+{
+	spi_master_put(probe->dev->spi_master);
+	kref_put(&probe->dev->kref, xapea00x_delete);
+}
+
+static struct spi_board_info tpm_board_info = {
+	.modalias        = XAPEA00X_TPM_MODALIAS,
+	.max_speed_hz    = 43 * 1000 * 1000, // Hz
+	.chip_select     = 0,
+	.mode            = SPI_MODE_0,
+	.platform_data   = NULL,
+	.controller_data = NULL,
+};
+
 /**
  * xapea00x_tpm_probe - Register and initialize the TPM device
  * @work: the work struct contained by the xapea00x device
@@ -244,17 +272,12 @@ err_out:
  */
 static void xapea00x_tpm_probe(struct work_struct *work)
 {
-	struct xapea00x_device *dev;
-	struct spi_master *spi_master;
+	struct xapea00x_async_probe *probe = work_to_probe(work);
+	struct xapea00x_device *dev = probe->dev;
+	struct spi_master *spi_master = dev->spi_master;
 	struct spi_device *tpm;
 	int retval;
-	dev = container_of(work, struct xapea00x_device, tpm_probe);
 
-	mutex_lock(&dev->spi_mutex);
-	spi_master = dev->spi_master;
-	if (!spi_master)
-		goto err; /* disconnected */
-	
 	/*
 	 * This driver is the "platform" in TPM terminology. Before
 	 * passing control of the TPM to the Linux TPM subsystem, do
@@ -263,48 +286,29 @@ static void xapea00x_tpm_probe(struct work_struct *work)
 	 */
 	retval = xapea00x_tpm_platform_initialize(dev);
 	if (retval) {
-		dev_err(&dev->interface->dev,
+		dev_err(dev->dev,
 		        "unable to do TPM platform initialization: %d\n", retval);
 		goto err;
 	}
 
 	/* Now register the TPM with the Linux TPM subsystem */
-	spi_master = dev->spi_master;
-	tpm = spi_alloc_device(dev->spi_master);
+	tpm = spi_new_device(spi_master, &tpm_board_info);
 	if (!tpm) {
-		dev_err(&dev->interface->dev,
-		        "unable to allocate spi device for TPM\n");
+		dev_err(dev->dev,
+		        "unable to add spi device for TPM\n");
 		goto err;
 	}
 
-	tpm->max_speed_hz  = spi_master->max_speed_hz;
-	tpm->chip_select   = 0;
-	tpm->mode	   = SPI_MODE_0;
-	tpm->bits_per_word = 8;
-	strncpy(tpm->modalias, XAPEA00X_TPM_MODALIAS, sizeof(tpm->modalias));
-
-	retval = spi_add_device(tpm);
-	if (retval) {
-		dev_err(&dev->interface->dev, "spi_add_device() failed with %d\n",
-		        retval);
-		goto free_tpm;
-	}
-
 	dev->tpm = tpm;
-
-	dev_info(&dev->interface->dev, "TPM initialization complete\n");
+	dev_info(dev->dev, "TPM initialization complete\n");
 	goto out;
 
-free_tpm:
-	spi_dev_put(tpm);
-	dev->tpm = NULL;
-
 err:
-	dev_err(&dev->interface->dev, "TPM initialization failed\n");
+	dev_err(dev->dev, "TPM initialization failed\n");
 
 out:
-	mutex_unlock(&dev->spi_mutex);
-	kref_put(&dev->kref, xapea00x_delete);
+	xapea00x_free_async_probe(probe);
+	kzfree(probe);
 	return;
 }
 
@@ -322,6 +326,7 @@ static int xapea00x_probe(struct usb_interface *interface,
                           const struct usb_device_id *id)
 {
 	struct xapea00x_device *dev;
+	struct xapea00x_async_probe *probe;
 	int retval;
 
 	dev = kzalloc(sizeof(struct xapea00x_device), GFP_KERNEL);
@@ -329,11 +334,12 @@ static int xapea00x_probe(struct usb_interface *interface,
 		return -ENOMEM;
 
 	kref_init(&dev->kref);
-	mutex_init(&dev->spi_mutex);
+	mutex_init(&dev->usb_mutex);
 
 	/* ---------------------- USB ------------------------ */
-	dev->udev = usb_get_dev(interface_to_usbdev(interface));
 	dev->interface = interface;
+	dev->udev = usb_get_dev(interface_to_usbdev(interface));
+	dev->dev = &dev->udev->dev;
 
 	dev->vid = __le16_to_cpu(dev->udev->descriptor.idVendor);
 	dev->pid = __le16_to_cpu(dev->udev->descriptor.idProduct);
@@ -342,7 +348,7 @@ static int xapea00x_probe(struct usb_interface *interface,
 	                                   &dev->bulk_in, &dev->bulk_out,
 	                                   NULL, NULL);
 	if (retval) {
-		dev_err(&interface->dev,
+		dev_err(dev->dev,
 		        "could not find both bulk-in and bulk-out endpoints\n");
 		goto err_out;
 	}
@@ -352,23 +358,24 @@ static int xapea00x_probe(struct usb_interface *interface,
 	/* ---------------------- SPI Master ------------------------ */
 	retval = xapea00x_spi_probe(dev);
 	if (retval) {
-		dev_err(&interface->dev, "could not initialize SPI master\n");
+		dev_err(dev->dev, "could not initialize SPI master\n");
 		goto err_out;
 	}
 
 	/* ---------------------- TPM SPI Device ------------------------ */
-	INIT_WORK(&dev->tpm_probe, xapea00x_tpm_probe);
-	kref_get(&dev->kref);
-	schedule_work(&dev->tpm_probe);
-	dev_info(&interface->dev, "scheduled initialization of TPM\n");
+	probe = kzalloc(sizeof(struct xapea00x_async_probe), GFP_KERNEL);
+	xapea00x_init_async_probe(probe, dev, xapea00x_tpm_probe);
+
+	schedule_work(&probe->work);
+	dev_info(dev->dev, "scheduled initialization of TPM\n");
 
 	/* ---------------------- Finished ------------------------ */
-	dev_info(&interface->dev, "device connected\n");
+	dev_info(dev->dev, "device connected\n");
 	return 0;
 
 err_out:
 	kref_put(&dev->kref, xapea00x_delete);
-	dev_err(&interface->dev, "device failed with %d\n", retval);
+	dev_err(dev->dev, "device failed with %d\n", retval);
 	return retval;
 }
 
@@ -377,50 +384,29 @@ static void xapea00x_disconnect(struct usb_interface *interface)
 	struct xapea00x_device *dev = usb_get_intfdata(interface);
         usb_set_intfdata(interface, NULL);
 
-	mutex_lock(&dev->spi_mutex);
 	spi_unregister_master(dev->spi_master);
-	dev->spi_master = NULL;
-	dev_dbg(&interface->dev, "unregistered SPI master\n");
-	mutex_unlock(&dev->spi_mutex);
+
+	mutex_lock(&dev->usb_mutex);
+	dev->interface = NULL;
+	mutex_unlock(&dev->usb_mutex);
 
 	kref_put(&dev->kref, xapea00x_delete);
 
-	dev_info(&interface->dev, "device disconnected\n");
+	dev_info(dev->dev, "device disconnected\n");
 }
 
 static struct usb_driver xapea00x_driver = {
-	.name		      = "xapea00x",
-	.probe		      = xapea00x_probe,
-	.disconnect	      = xapea00x_disconnect,
-	.suspend	      = NULL,
-	.resume	      = NULL,
-	.reset_resume	      = NULL,
-	.id_table	      = xapea00x_devices,
+	.name                 = "xapea00x",
+	.probe                = xapea00x_probe,
+	.disconnect           = xapea00x_disconnect,
+	.suspend              = NULL,
+	.resume               = NULL,
+	.reset_resume         = NULL,
+	.id_table             = xapea00x_devices,
 	.supports_autosuspend = 0
 };
 
-/*******************************************************************************
- * Module functions
- */
-
-static int __init xapea00x_init(void)
-{
-	int retval;
-
-	retval = usb_register_driver(&xapea00x_driver, THIS_MODULE, "xapea00x");
-	if (retval)
-		pr_err("xapea00x: usb_register_driver() failed with %d\n", retval);
-
-	return retval;
-}
-
-static void __exit xapea00x_exit(void)
-{
-	usb_deregister(&xapea00x_driver);
-}
-
-module_init(xapea00x_init);
-module_exit(xapea00x_exit);
+module_usb_driver(xapea00x_driver);
 
 MODULE_AUTHOR("David R. Bild <david.bild@xaptum.com>");
 MODULE_DESCRIPTION("Xaptum XAP-EA-00x ENF Access card");

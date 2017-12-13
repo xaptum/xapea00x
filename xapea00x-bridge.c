@@ -20,6 +20,20 @@
 
 #include "xapea00x.h"
 
+#define XAPEA00X_BR_CMD_READ              0x00
+#define XAPEA00X_BR_CMD_WRITE             0x01
+#define XAPEA00X_BR_CMD_WRITEREAD         0x02
+
+#define XAPEA00X_BR_BREQTYP_SET           0x40
+
+#define XAPEA00X_BR_BREQ_SET_GPIO_VALUES  0x21
+#define XAPEA00X_BR_BREQ_SET_GPIO_CS      0x25
+#define XAPEA00X_BR_BREQ_SET_SPI_WORD     0x31
+
+#define XAPEA00X_BR_USB_TIMEOUT           1000 // msecs
+
+#define XAPEA00X_BR_CS_DISABLED           0x00
+
 /*******************************************************************************
  * Bridge USB transfers
  */
@@ -71,6 +85,12 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 	unsigned int pipe;
 	int buf_len, actual_len, retval;
 
+	mutex_lock(&dev->usb_mutex);
+	if (!dev->interface) {
+		retval = -ENODEV;
+		goto out;
+	}
+
 	buf_len = sizeof(struct xapea00x_br_bulk_command) + len;
 	buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!buf)
@@ -84,9 +104,9 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 
 	pipe = usb_sndbulkpipe(dev->udev, dev->bulk_out->bEndpointAddress);
 	retval = usb_bulk_msg(dev->udev, pipe, buf, buf_len, &actual_len,
-	                      XAPEA00X_USB_TIMEOUT);
+	                      XAPEA00X_BR_USB_TIMEOUT);
 	if (retval) {
-		dev_warn(&dev->interface->dev,
+		dev_warn(dev->dev,
 		         "%s: usb_bulk_msg() failed with %d\n",
 		         __func__, retval);
 		goto free_buf;
@@ -98,6 +118,7 @@ free_buf:
 	kzfree(buf);
 
 out:
+	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -116,6 +137,12 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int le
 	void *buf;
 	int actual_len, retval;
 
+	mutex_lock(&dev->usb_mutex);
+	if (!dev->interface) {
+		retval = -ENODEV;
+		goto out;
+	}
+
 	buf = kzalloc(len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
@@ -124,10 +151,10 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int le
 
 	pipe = usb_rcvbulkpipe(dev->udev, dev->bulk_in->bEndpointAddress);
 	retval = usb_bulk_msg(dev->udev, pipe, buf, len, &actual_len,
-	                      XAPEA00X_USB_TIMEOUT);
+	                      XAPEA00X_BR_USB_TIMEOUT);
 
 	if (retval) {
-		dev_warn(&dev->interface->dev, "%s: usb_bulk_msg() failed with %d\n",
+		dev_warn(dev->dev, "%s: usb_bulk_msg() failed with %d\n",
 		          __func__, retval);
 		goto free_buf;
 	}
@@ -139,6 +166,7 @@ free_buf:
 	kzfree(buf);
 
 out:
+	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -166,6 +194,12 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	void *buf;
 	int retval;
 
+	mutex_lock(&dev->usb_mutex);
+	if (!dev->interface) {
+		retval = -ENODEV;
+		goto out;
+	}
+
 	/* control_msg buffer must be dma-capable (e.g.k kmalloc-ed,
 	 * not stack).	Copy data into such buffer here, so we can use
 	 * simpler stack allocation in the callers - we have no
@@ -181,10 +215,10 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 
 	pipe = usb_sndctrlpipe(dev->udev, 0);
 	retval = usb_control_msg(dev->udev, pipe, bRequest,
-	                         XAPEA00X_BREQTYP_SET, wValue, wIndex,
-	                         buf, len, XAPEA00X_USB_TIMEOUT);
+	                         XAPEA00X_BR_BREQTYP_SET, wValue, wIndex,
+	                         buf, len, XAPEA00X_BR_USB_TIMEOUT);
 	if (retval < 0) {
-		dev_warn(&dev->interface->dev, "usb_control_msg() failed with %d\n",
+		dev_warn(dev->dev, "usb_control_msg() failed with %d\n",
 		         retval);
 		goto free_buf;
 	}
@@ -195,7 +229,122 @@ free_buf:
 	kzfree(buf);
 
 out:
+	mutex_unlock(&dev->usb_mutex);
 	return retval;
+}
+
+/*******************************************************************************
+ * Bridge configuration commands
+ */
+
+/**
+ * xapea00x_br_set_gpio_value - Sets the value on the specified pin of
+ * the bridge chip.
+ * @dev: pointer to the device containing the bridge whose pin to set
+ * @pin: the number of the pin to set
+ * @value: the value to set the pin to, 0 or 1
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error number.
+ */
+static int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin,
+                                      u8 value)
+{
+	u8 data[4] = { 0, 0, 0, 0 };
+	switch (pin) {
+	case 10:
+	case  9:
+	case  8:
+	case  7:
+	case  6:
+		data[0] = value << (pin - 4);
+		data[2] = 1 << (pin - 4);
+		break;
+	case  5:
+		data[0] = value;
+		data[2] = 1;
+		break;
+	case  4:
+	case  3:
+	case  2:
+	case  1:
+	case  0:
+		data[1] = value << (pin + 3);
+		data[3] = 1 << (pin + 3);
+	}
+	return xapea00x_br_ctrl_write(dev, XAPEA00X_BR_BREQ_SET_GPIO_VALUES,
+	                              0, 0, data, 4);
+}
+
+/**
+ * xapea00x_br_set_gpio_cs - Sets the chip select control on the specified
+ * pin of the bridge chip.
+ * @dev: pointer to the device containing the bridge whose cs to set
+ * @pin: the number of the pin to set
+ * @control: the chip select control value for the pin, 0, 1, or 2
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error number.
+ */
+static int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin,
+                                   u8 control)
+{
+	u8 data[2] = { pin, control };
+	return xapea00x_br_ctrl_write(dev, XAPEA00X_BR_BREQ_SET_GPIO_CS,
+	                              0, 0, data, 2);
+}
+
+/*******************************************************************************
+ * Bridge configuration commands
+ */
+/**
+ * xapea00x_br_disable_cs - disable the built-in chip select
+ * capability of the specified channel.  It does not support holding
+ * the CS active between SPI transfers, a feature required for the
+ * TPM.  Instead, we manually control the CS pin as a GPIO.
+ * @dev: pointer to the device containing the bridge whose cs to disable
+ * @channel: the SPI channel whose cs to disable
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful 0. Otherwise a negative error number.
+ */
+int xapea00x_br_disable_cs(struct xapea00x_device *dev, u8 channel)
+{
+	return xapea00x_br_set_gpio_cs(dev, channel,
+	                               XAPEA00X_BR_CS_DISABLED);
+}
+
+/**
+ * xapea00x_br_assert_cs - assert the chip select pin for the
+ * specified channel.
+ * @dev: pointer to the device containing the bridge who cs to assert
+ * @channel: the SPI channel whose cs to assert
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful 0. Otherwise a negative error number.
+ */
+int xapea00x_br_assert_cs(struct xapea00x_device *dev, u8 channel)
+{
+	return xapea00x_br_set_gpio_value(dev, channel, 0);
+}
+
+/**
+ * xapea00x_br_deassert_cs - deassert the chip select pin for the
+ * specified channel.
+ * @dev: pointer to the device containing the bridge who cs to deassert
+ * @channel: the SPI channel whose cs to deassert
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful 0. Otherwise a negative error number.
+ */
+int xapea00x_br_deassert_cs(struct xapea00x_device *dev, u8 channel)
+{
+	return xapea00x_br_set_gpio_value(dev, channel, 1);
 }
 
 /*******************************************************************************
@@ -217,7 +366,7 @@ int xapea00x_br_spi_read(struct xapea00x_device *dev, void* rx_buf, int len)
 	struct xapea00x_br_bulk_command header;
 	int retval;
 
-	xapea00x_br_prep_bulk_command(&header, XAPEA00X_CMD_READ, len);
+	xapea00x_br_prep_bulk_command(&header, XAPEA00X_BR_CMD_READ, len);
 	retval = xapea00x_br_bulk_write(dev, &header, NULL, 0);
 	if (retval)
 		goto out;
@@ -241,7 +390,7 @@ int xapea00x_br_spi_write(struct xapea00x_device *dev, const void* tx_buf,
 	struct xapea00x_br_bulk_command header;
 	int retval;
 
-	xapea00x_br_prep_bulk_command(&header, XAPEA00X_CMD_WRITE, len);
+	xapea00x_br_prep_bulk_command(&header, XAPEA00X_BR_CMD_WRITE, len);
 	retval = xapea00x_br_bulk_write(dev, &header, tx_buf, len);
 
 	return retval;
@@ -267,7 +416,7 @@ int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void* tx_buf,
 	struct xapea00x_br_bulk_command header;
 	int retval;
 
-	xapea00x_br_prep_bulk_command(&header, XAPEA00X_CMD_WRITEREAD, len);
+	xapea00x_br_prep_bulk_command(&header, XAPEA00X_BR_CMD_WRITEREAD, len);
 	retval = xapea00x_br_bulk_write(dev, &header, tx_buf, len);
 	if (retval)
 		goto out;
@@ -276,82 +425,4 @@ int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void* tx_buf,
 
 out:
 	return retval;
-}
-
-/*******************************************************************************
- * Bridge configuration commands
- */
-/**
- * xapea00x_br_set_gpio_value - Sets the value on the specified pin of
- * the bridge chip.
- * @dev: pointer to the device containing the bridge whose pin to set
- * @pin: the number of the pin to set
- * @value: the value to set the pin to, 0 or 1
- *
- * Context: !in_interrupt()
- *
- * Return: If successful, 0. Otherwise a negative error number.
- */
-int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin, u8 value)
-{
-	u8 data[4] = { 0, 0, 0, 0 };
-	switch (pin) {
-	case 10:
-	case  9:
-	case  8:
-	case  7:
-	case  6:
-		data[0] = value << (pin - 4);
-		data[2] = 1 << (pin - 4);
-		break;
-	case  5:
-		data[0] = value;
-		data[2] = 1;
-		break;
-	case  4:
-	case  3:
-	case  2:
-	case  1:
-	case  0:
-		data[1] = value << (pin + 3);
-		data[3] = 1 << (pin + 3);
-	}
-	return xapea00x_br_ctrl_write(dev, XAPEA00X_BREQ_SET_GPIO_VALUES,
-	                              0, 0, data, 4);
-}
-
-/**
- * xapea00x_br_set_gpio_cs - Sets the chip select control on the specified
- * pin of the bridge chip.
- * @dev: pointer to the device containing the bridge whose cs to set
- * @pin: the number of the pin to set
- * @control: the chip select control value for the pin, 0, 1, or 2
- *
- * Context: !in_interrupt()
- *
- * Return: If successful, 0. Otherwise a negative error number.
- */
-int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin, u8 control)
-{
-	u8 data[2] = { pin, control };
-	return xapea00x_br_ctrl_write(dev, XAPEA00X_BREQ_SET_GPIO_CS,
-	                              0, 0, data, 2);
-}
-
-/**
- * xapea00x_br_set_spi_word - Sets the SPI config word on the specified
- * channel.
- * @dev: pointer to the device containing the SPI channel to configure
- * @channel: the number of the SPI channel to configure
- * @word: the SPI config word
- *
- * Context: !in_interrupt()
- *
- * Return: If successful, 0. Otherwise a negative error number.
- */
-int xapea00x_br_set_spi_word(struct xapea00x_device *dev, u8 channel, u8 word)
-{
-	u8 data[2] = { channel, word };
-	return xapea00x_br_ctrl_write(dev, XAPEA00X_BREQ_SET_SPI_WORD,
-	                              0, 0, data, 2);
 }

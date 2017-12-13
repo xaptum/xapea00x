@@ -32,49 +32,42 @@
 
 #define XAPEA00X_NUM_CS                1
 
-#define XAPEA00X_CMD_READ              0x00
-#define XAPEA00X_CMD_WRITE             0x01
-#define XAPEA00X_CMD_WRITEREAD         0x02
-
-#define XAPEA00X_BREQTYP_SET           0x40
-
-#define XAPEA00X_BREQ_SET_GPIO_VALUES  0x21
-#define XAPEA00X_BREQ_SET_GPIO_CS      0x25
-#define XAPEA00X_BREQ_SET_SPI_WORD     0x31
-
-#define XAPEA00X_USB_TIMEOUT           1000 // msecs
-
-#define XAPEA00X_GPIO_CS_DISABLED      0x00
-
-#define XAPEA00X_TPM_SPI_WORD          0x08
 #define XAPEA00X_TPM_MODALIAS          "tpm_tis_spi"
 
 struct xapea00x_device {
 	struct kref kref;
 
+	struct device *dev;
 	struct usb_device *udev;
 	struct usb_interface *interface;
+
 	struct usb_endpoint_descriptor *bulk_in;
 	struct usb_endpoint_descriptor *bulk_out;
+
 	u16 pid;
 	u16 vid;
 
-	struct spi_master *spi_master;
-	struct mutex spi_mutex;
+	/*
+	 * This mutex must be held while synchronous USB requests are
+	 * in progress. It is acquired during disconnect to be sure
+	 * that there is not an outstanding request.
+	 */
+	struct mutex usb_mutex;
 
+	struct spi_master *spi_master;
 	struct spi_device *tpm;
-	struct work_struct tpm_probe;
 };
 
 /* Public bridge functions */
+int xapea00x_br_disable_cs(struct xapea00x_device *dev, u8 channel);
+int xapea00x_br_assert_cs(struct xapea00x_device *dev, u8 channel);
+int xapea00x_br_deassert_cs(struct xapea00x_device *dev, u8 channel);
+
 int xapea00x_br_spi_read(struct xapea00x_device *dev, void* rx_buf, int len);
 int xapea00x_br_spi_write(struct xapea00x_device *dev, const void* tx_buf,
                           int len);
 int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void* tx_buf,
                                void* rx_buf, int len);
-int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin, u8 value);
-int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin, u8 control);
-int xapea00x_br_set_spi_word(struct xapea00x_device *dev, u8 channel, u8 word);
 
 /* Shared SPI function */
 int xapea00x_spi_transfer(struct xapea00x_device *dev,
