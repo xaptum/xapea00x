@@ -21,6 +21,8 @@
 #include "xapea00x.h"
 #include "xapea00x-backports.h"
 
+#define XAPEA00X_TPM_MODALIAS          "tpm_tis_spi"
+
 #define kref_to_xapea00x(k) container_of(k, struct xapea00x_device, kref);
 
 static void xapea00x_delete(struct kref *kref)
@@ -205,7 +207,7 @@ static int xapea00x_spi_probe(struct xapea00x_device *dev)
 	spi_master->max_speed_hz = 12 * 1000 * 1000; /* 12 MHz */
 
 	spi_master->bus_num = -1; /* dynamically assigned */
-	spi_master->num_chipselect = XAPEA00X_NUM_CS;
+	spi_master->num_chipselect = 1;
 	spi_master->mode_bits = SPI_MODE_0;
 
 	spi_master->flags = 0;

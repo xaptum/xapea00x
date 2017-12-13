@@ -150,30 +150,6 @@ static int xapea00x_tpm_write8(struct xapea00x_device *dev, u32 addr, u8 data)
 	return xapea00x_tpm_write_bytes(dev, addr, &data, 1);
 }
 
-static int xapea00x_tpm_read16(struct xapea00x_device *dev, u32 addr, u16 *result)
-{
-	u16 result_le;
-	int retval;
-
-	retval = xapea00x_tpm_read_bytes(dev, addr, &result_le, 2);
-	if (retval)
-		goto out;
-
-	*result = __le16_to_cpu(result_le);
-	retval = 0;
-
-out:
-	return retval;
-}
-
-static int xapea00x_tpm_write16(struct xapea00x_device *dev, u32 addr, u16 data)
-{
-	u16 data_le;
-
-	data_le = __cpu_to_le16(data);
-	return xapea00x_tpm_write_bytes(dev, addr, &data_le, 2);
-}
-
 static int xapea00x_tpm_read32(struct xapea00x_device *dev, u32 addr, u32 *result)
 {
 	u32 result_le;
@@ -208,33 +184,6 @@ static int xapea00x_tpm_wait_reg8(struct xapea00x_device *dev,
 
 	do {
 		retval = xapea00x_tpm_read8(dev, addr, &reg);
-		if (retval)
-			goto out;
-
-		if ((reg & flags) == flags) {
-			retval = 0;
-			goto out;
-		}
-
-		xapea00x_tpm_msleep(TPM_TIMEOUT);
-	} while (time_before(jiffies, stop));
-
-	retval = -ETIMEDOUT;
-
-out:
-	return retval;
-}
-
-static int xapea00x_tpm_wait_reg32(struct xapea00x_device *dev,
-                                   u32 addr, u32 flags,
-                                   int timeout_msecs)
-{
-	unsigned long stop = jiffies + msecs_to_jiffies(timeout_msecs);
-	u32 reg;
-	int retval;
-
-	do {
-		retval = xapea00x_tpm_read32(dev, addr, &reg);
 		if (retval)
 			goto out;
 

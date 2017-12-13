@@ -30,10 +30,6 @@
 #define USB_VENDOR_ID_SILABS           0x10c4
 #define USB_PRODUCT_ID_XAPEA001        0x8BDE
 
-#define XAPEA00X_NUM_CS                1
-
-#define XAPEA00X_TPM_MODALIAS          "tpm_tis_spi"
-
 struct xapea00x_device {
 	struct kref kref;
 
