@@ -77,15 +77,31 @@ struct tpm_tis_command {
 } __attribute__((__packed__));
 
 /*******************************************************************************
- * TPM functions
+ * TPM TIS functions
  */
 
+/**
+ * xapea00x_tpm_msleep - sleep for at least the specified time.
+ * @msecs: minimum duration to sleep for in milliseconds
+ */
 static void xapea00x_tpm_msleep(int msecs)
 {
 	usleep_range(msecs * 1000,
 		     msecs * 1000 + TPM_TIMEOUT_RANGE_US);
 }
 
+/**
+ * xapea00x_tpm_transfer - execute an SPI transfer.
+ * @dev: pointer to the device
+ * @addr: the TPM TIS register address
+ * @in: if a write or write_read transfer, the data to write
+ * @out: if a read or write_read  transfer, the buffer to read data into
+ * @len: the number of bytes to transfer
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_transfer(struct xapea00x_device *dev,
 				 u32 addr, u8 *in, u8 *out, u16 len)
 {
@@ -128,28 +144,83 @@ out:
         return retval;
 }
 
+/**
+ * xapea00x_tpm_read_bytes - read data from the TPM
+ * @dev: pointer to the device
+ * @addr: the register to read from
+ * @result: buffer to in which to place the read data
+ * @len: the number of bytes to read
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_read_bytes(struct xapea00x_device *dev, u32 addr,
                                    void *result, u16 len)
 {
 	return xapea00x_tpm_transfer(dev, addr, result, NULL, len);
 }
 
+/**
+ * xapea00x_tpm_write_bytes - write data from the TPM
+ * @dev: pointer to the device
+ * @addr: the register to write to
+ * @data: pointer to the data to write
+ * @len: the number of bytes to read
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_write_bytes(struct xapea00x_device *dev, u32 addr,
                                     void *data, u16 len)
 {
 	return xapea00x_tpm_transfer(dev, addr, NULL, data, len);
 }
 
+/**
+ * xapea00x_tpm_read8 - read one byte of data from the TPM
+ * @dev: pointer to the device
+ * @addr: the register to read from
+ * @result: pointer to the destination
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_read8(struct xapea00x_device *dev, u32 addr, u8 *result)
 {
 	return xapea00x_tpm_read_bytes(dev, addr, result, 1);
 }
 
+/**
+ * xapea00x_tpm_write8 - write one byte of data to the TPM
+ * @dev: pointer to the device
+ * @addr: the register to write to
+ * @data:  the byte to write
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_write8(struct xapea00x_device *dev, u32 addr, u8 data)
 {
 	return xapea00x_tpm_write_bytes(dev, addr, &data, 1);
 }
 
+/**
+ * xapea00x_tpm_read32 - read one integer of data from the TPM
+ * @dev: pointer to the device
+ * @addr: the register to read from
+ * @result: pointer to the destination
+ *
+ * The method performs any required endianness conversion on the
+ * result.
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_read32(struct xapea00x_device *dev, u32 addr, u32 *result)
 {
 	u32 result_le;
@@ -166,6 +237,19 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_write32 - write one integer of data to the TPM
+ * @dev: pointer to the device
+ * @addr: the register to read from
+ * @data: the integer to write
+ *
+ * The method performs any required endianness conversion on the
+ * data.
+ *
+ * Context: !in_interrupt()
+ *
+ * Return: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_write32(struct xapea00x_device *dev, u32 addr, u32 data)
 {
 	u32 data_le;
@@ -174,6 +258,18 @@ static int xapea00x_tpm_write32(struct xapea00x_device *dev, u32 addr, u32 data)
 	return xapea00x_tpm_write_bytes(dev, addr, &data_le, 4);
 }
 
+/**
+ * xapea00x_tpm_wait_reg8 - waits for the specified flags on the
+ * register to be set.
+ * @dev: pointer to the device
+ * @addr: the register to check
+ * @flags: mask of the flags to check
+ * @timeout_msecs: maximum amount of time to wait in milliseconds
+ * 
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_wait_reg8(struct xapea00x_device *dev,
                                   u8 addr, u8 flags,
                                   int timeout_msecs)
@@ -201,7 +297,15 @@ out:
 	return retval;
 }
 
-static int xapea00x_tpm_request_locality(struct xapea00x_device *dev)
+/**
+ * xapea00x_tpm_request_locality0 - sets the active locality to 0
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
+static int xapea00x_tpm_request_locality0(struct xapea00x_device *dev)
 {
 	int retval;
 
@@ -217,12 +321,30 @@ out:
 	return retval;
 }
 
-static int xapea00x_tpm_release_locality(struct xapea00x_device *dev)
+/**
+ * xapea00x_tpm_release_locality0 - release the active locality
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0.  Otherwise a negative error code.
+ */
+static int xapea00x_tpm_release_locality0(struct xapea00x_device *dev)
 {
 	return xapea00x_tpm_write8(dev, TPM_ACCESS_0,
 	                           TPM_ACCESS_ACTIVE_LOCALITY);
 }
 
+/**
+ * xapea00x_tpm_burst_count - fetch the number of bytes of data the
+ * TPM can currently handle in one burst.
+ * @dev: pointer to the device
+ * @counter: pointer to the destination for the count
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_burst_count(struct xapea00x_device *dev, u32 *count)
 {
 	u32 reg;
@@ -239,6 +361,19 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_send - send the command to the TPM and execute it.
+ * @dev: pointer to the device
+ * @buf: the buffer containing the command
+ * @len: size of the buffer in bytes.
+ *
+ * N.B., the command may not fill the entire buffer. This function
+ * parses the command to determine its actual size.
+ * 
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_send(struct xapea00x_device *dev, void* buf, u32 len)
 {
 	struct tpm_tis_command *cmd = buf;
@@ -292,6 +427,19 @@ err:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_recv - recv a command response from the TPM.
+ * @dev: pointer to the device
+ * @buf: the buffer in which to store the response
+ * @len: size of the buffer in bytes.
+ *
+ * N.B., the result may not fill the entire buffer. The caller must
+ * parse the response header to determine its actual size.
+ * 
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_recv(struct xapea00x_device *dev, void* buf, u32 len)
 {
 	struct tpm_tis_command *cmd = buf;
@@ -353,11 +501,25 @@ err:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_transmit - transmit one command to the TPM and receive
+ * the response.
+ * @dev: pointer to the device
+ * @buf: the buffer containing the command and to place the response in.
+ * @len: size of the buffer in bytes.
+ *
+ * N.B., the command and result may not fill the entire buffer. The
+ * caller must parse the response header to determine its actual size.
+ * 
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_transmit(struct xapea00x_device *dev, void* buf, u32 len)
 {
 	int retval;
 
-	retval = xapea00x_tpm_request_locality(dev);
+	retval = xapea00x_tpm_request_locality0(dev);
 	if (retval)
 		goto out;
 
@@ -381,12 +543,31 @@ cancel:
 	xapea00x_tpm_write32(dev, TPM_STS_0, TPM_STS_COMMAND_READY);
 
 release:
-	xapea00x_tpm_release_locality(dev);
+	xapea00x_tpm_release_locality0(dev);
 
 out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_transmit_cmd - build and transmit one command to the
+ * TPM and receive the response.
+ * @dev: pointer to the device
+ * @tag: the TPM command header tag
+ * @cc: the TPM command header code
+ * @body: pointer to the command body
+ * @body_len: size in bytes of the command body
+ * @rc: pointer to the destination for the result code
+ * @result: pointer to the destination for the result body. If NULL,
+ *          the result body will be discarded.
+ * @result_len: size in bytes of the result buffer
+ * @actual_len: size in bytes of the result body. May be NULL is
+ *              result is NULL.
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
 	                            u16 tag, u32 cc, void* body, u32 body_len,
 	                            u32 *rc, void* result, u32 result_len,
@@ -439,7 +620,6 @@ static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
 	retval = 0;
 
 free:
-	/* Zero and free the buffer; */
 	memset(buf, 0, buflen);
 	kzfree(buf);
 
@@ -447,6 +627,20 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_transmit_cmd_simple - build and transmit one command to the
+ * TPM and discard the respone body.
+ * @dev: pointer to the device
+ * @tag: the TPM command header tag
+ * @cc: the TPM command header code
+ * @body: pointer to the command body
+ * @len: size in bytes of the command body
+ * @rc: pointer to the destination for the result code
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_transmit_cmd_simple(struct xapea00x_device *dev,
 	                                    u16 tag, u32 cc,
 	                                    void* body, u32 len, u32 *rc)
@@ -454,6 +648,18 @@ static int xapea00x_tpm_transmit_cmd_simple(struct xapea00x_device *dev,
 	return xapea00x_tpm_transmit_cmd(dev, tag, cc, body, len, rc, NULL, 0, NULL);
 }
 
+/*******************************************************************************
+ * TPM commands
+ */
+
+/**
+ * xapea00x_tpm_startup - executes the TPM2_Startup command.
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_startup(struct xapea00x_device *dev)
 {
 	u8 body[2] = { 0x00, 0x00 };
@@ -477,6 +683,14 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_self_test - executes the TPM2_SelfTest command.
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_self_test(struct xapea00x_device *dev)
 {
 	u8 body[1] = { 0x01 };
@@ -505,7 +719,15 @@ out:
 	return retval;
 }
 
-
+/**
+ * xapea00x_tpm_dictionary_attack_lock_reset - executes the
+ * TPM2_DictionaryAttackLockReset command.
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_dictionary_attack_lock_reset(struct xapea00x_device *dev)
 {
 	u8 body[17] = { 0x40, 0x00, 0x00, 0x0A, // TPM_RH_LOCKOUT
@@ -535,6 +757,16 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_get_random - executes the TPM2_GetRandom command.
+ * @dev: pointer to the device
+ * @len: number of bytes to request
+ * @bytes: pointer to the destination
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
 	                           void* bytes)
 {
@@ -587,6 +819,15 @@ out:
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_randomize_platform_auth - sets the platform
+ * authorization to a random password and then discards it.
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 {
 	u8 password[16];
@@ -632,9 +873,22 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 
 out:
 	memset(password, 0, sizeof(password));
+        memset(body, 0, sizeof(body));
 	return retval;
 }
 
+/**
+ * xapea00x_tpm_platform_initialize - performs the minimal
+ * initialization of the TPM normally performed by the platform code
+ * (e.g., BIOS). This consists of executing the TPM startup and
+ * self-test commands and setting the platform authorization password.
+ *
+ * @dev: pointer to the device
+ *
+ * Context: !in_interrupt()
+ *
+ * Result: If successful, 0. Otherwise a negative error code.
+ */
 int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 {
 	int retval;
@@ -669,7 +923,9 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	 * "thumb-drive"-esque demo devices, this happens whenever it
 	 * is unplugged. Dictionary attacks against the demo devices
 	 * (pid 0x8BDE) don't matter, so reset the lockout on every
-	 * boot. Production devices (other pids) do not get reset.
+	 * boot. Production devices (other PIDs) are internal mPCI-e
+	 * devices that are not hot-plugged, so do not need to be
+	 * reset.
 	 */
 	if (dev->pid == USB_PRODUCT_ID_XAPEA001) {
 		retval = xapea00x_tpm_dictionary_attack_lock_reset(dev);
