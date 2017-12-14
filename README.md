@@ -43,7 +43,7 @@ make
 sudo make modules_install
 ```
 
-#### TCG_TIS_CORE (if needed)
+#### TCG_TIS_SPI (if needed)
 
 If your system does not include a working `TCG_TIS_SPI` module, build
 and install the copy in this repo:
