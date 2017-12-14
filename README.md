@@ -36,6 +36,13 @@ to make out-of-tree building easy.
 
 ### Installation
 
+#### xapea00x
+
+```bash
+make
+sudo make modules_install
+```
+
 #### TCG_TIS_CORE (if needed)
 
 If your system does not include a working `TCG_TIS_SPI` module, build
@@ -43,13 +50,6 @@ and install the copy in this repo:
 
 ```bash
 cd tpm_tis_spi
-make
-sudo make modules_install
-```
-
-#### xapea00x
-
-```bash
 make
 sudo make modules_install
 ```
