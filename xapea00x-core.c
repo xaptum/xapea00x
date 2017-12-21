@@ -369,6 +369,8 @@ out:
 
 static const struct usb_device_id xapea00x_devices[] = {
 	{ USB_DEVICE(USB_VENDOR_ID_SILABS, USB_PRODUCT_ID_XAPEA001) },
+	{ USB_DEVICE(USB_VENDOR_ID_XAPTUM, USB_PRODUCT_ID_XAPEA002) },
+	{ USB_DEVICE(USB_VENDOR_ID_XAPTUM, USB_PRODUCT_ID_XAPEA003) },
 	{ }
 };
 MODULE_DEVICE_TABLE(usb, xapea00x_devices);

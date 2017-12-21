@@ -922,12 +922,13 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	 * too many times without a proper shutdown. For the
 	 * "thumb-drive"-esque demo devices, this happens whenever it
 	 * is unplugged. Dictionary attacks against the demo devices
-	 * (pid 0x8BDE) don't matter, so reset the lockout on every
-	 * boot. Production devices (other PIDs) are internal mPCI-e
-	 * devices that are not hot-plugged, so do not need to be
+	 * (XAP-EA-00{1,2}) don't matter, so reset the lockout on every
+	 * boot. Production devices (XAP-EA-003) are internal mPCI-e
+	 * devices that should not be hot-plugged, so do not need to be
 	 * reset.
 	 */
-	if (dev->pid == USB_PRODUCT_ID_XAPEA001) {
+	if (dev->pid == USB_PRODUCT_ID_XAPEA001 ||
+	    dev->pid == USB_PRODUCT_ID_XAPEA002) {
 		retval = xapea00x_tpm_dictionary_attack_lock_reset(dev);
 		if (retval) {
 			dev_err(&dev->interface->dev,

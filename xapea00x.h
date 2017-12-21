@@ -28,7 +28,11 @@
 #include <linux/workqueue.h>
 
 #define USB_VENDOR_ID_SILABS           0x10c4
+#define USB_VENDOR_ID_XAPTUM           0x2FE0
+
 #define USB_PRODUCT_ID_XAPEA001        0x8BDE
+#define USB_PRODUCT_ID_XAPEA002        0x8BDE
+#define USB_PRODUCT_ID_XAPEA003        0x8BEE
 
 struct xapea00x_device {
 	struct kref kref;
