@@ -9,8 +9,8 @@ Xaptum Edge Network Fabric.
 | Model # | Form Factor | USB Vendor ID | USB Product ID |
 |---------|-------------|---------------|----------------|
 | XAP-EA-001 | USB | 0x10C4 | 0x8BDE |
-| XAP-EA-002 | USB | 0xXXXX | 0x8BDE |
-| XAP-EA-003 | Mini PCI-e | 0xXXXX | 0xXXXX |
+| XAP-EA-002 | USB | 0x2FE0 | 0x8BDE |
+| XAP-EA-003 | Mini PCI-e | 0x2FE0 | 0x8BEE |
 
 ### Runtime Dependencies
 
