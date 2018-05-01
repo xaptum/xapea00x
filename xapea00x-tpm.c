@@ -1,6 +1,6 @@
 /* XAP-EA-00x driver for Linux
  *
- *  Copyright (c) 2017 Xaptum, Inc.
+ *  Copyright (c) 2017-2018 Xaptum, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,53 +20,53 @@
 
 #include "xapea00x.h"
 
-#define TPM_RETRY                      50
-#define TPM_TIMEOUT                    5    // msecs
-#define TPM_TIMEOUT_RANGE_US           300  // usecs
+#define TPM_RETRY			50
+#define TPM_TIMEOUT			5    // msecs
+#define TPM_TIMEOUT_RANGE_US		300  // usecs
 
-#define TIS_SHORT_TIMEOUT              750  // msecs
-#define TIS_LONG_TIMEOUT               2000 // msecs
+#define TIS_SHORT_TIMEOUT		750  // msecs
+#define TIS_LONG_TIMEOUT		2000 // msecs
 
-#define TIS_MAX_BUF                    1024 // byte
-#define TIS_HEADER_LEN                 10   // byte
+#define TIS_MAX_BUF			1024 // byte
+#define TIS_HEADER_LEN			10   // byte
 
-#define TPM2_TIMEOUT_A                 750  // msecs
-#define TPM2_TIMEOUT_B                 2000 // msecs
-#define TPM2_TIMEOUT_C                 200  // msecs
-#define TPM2_TIMEOUT_D                 30   // msecs
+#define TPM2_TIMEOUT_A			750  // msecs
+#define TPM2_TIMEOUT_B			2000 // msecs
+#define TPM2_TIMEOUT_C			200  // msecs
+#define TPM2_TIMEOUT_D			30   // msecs
 
-#define TPM_ACCESS_0                   0x0000
-#define TPM_STS_0                      0x0018
-#define TPM_DATA_FIFO_0                0x0024
+#define TPM_ACCESS_0			0x0000
+#define TPM_STS_0			0x0018
+#define TPM_DATA_FIFO_0		0x0024
 
-#define TPM2_ST_NO_SESSIONS            0x8001
-#define TPM2_ST_SESSIONS               0x8002
+#define TPM2_ST_NO_SESSIONS		0x8001
+#define TPM2_ST_SESSIONS		0x8002
 
-#define TPM2_CC_STARTUP                0x0144
-#define TPM2_CC_SHUTDOWN               0x0145
-#define TPM2_CC_SELF_TEST              0x0143
-#define TPM2_CC_GET_RANDOM             0x017B
-#define TPM2_CC_HIERARCHY_CHANGE_AUTH        0x0129
-#define TPM2_CC_DICTIONARY_ATTACK_LOCK_RESET 0x0139
+#define TPM2_CC_STARTUP		0x0144
+#define TPM2_CC_SHUTDOWN		0x0145
+#define TPM2_CC_SELF_TEST		0x0143
+#define TPM2_CC_GET_RANDOM		0x017B
+#define TPM2_CC_HIERARCHY_CHANGE_AUTH	0x0129
+#define TPM2_CC_DICT_ATTACK_LOCK_RST	0x0139
 
-#define TPM_RC_SUCCESS                 0x000
-#define TPM_RC_INITIALIZE              0x100
+#define TPM_RC_SUCCESS			0x000
+#define TPM_RC_INITIALIZE		0x100
 
 enum tis_access {
-	TPM_ACCESS_VALID = 0x80,
-	TPM_ACCESS_ACTIVE_LOCALITY = 0x20,
-	TPM_ACCESS_REQUEST_PENDING = 0x04,
-	TPM_ACCESS_REQUEST_USE = 0x02
+	TPM_ACCESS_VALID		= 0x80,
+	TPM_ACCESS_ACTIVE_LOCALITY	= 0x20,
+	TPM_ACCESS_REQUEST_PENDING	= 0x04,
+	TPM_ACCESS_REQUEST_USE		= 0x02
 };
 
 enum tis_status {
-	TPM_STS_VALID          = 0x80,
-	TPM_STS_COMMAND_READY  = 0x40,
-	TPM_STS_GO             = 0x20,
-	TPM_STS_DATA_AVAIL     = 0x10,
-	TPM_STS_DATA_EXPECT    = 0x08,
-	TPM_STS_SELF_TEST_DONE = 0x04,
-	TPM_STS_RESPONSE_RETRY = 0x02
+	TPM_STS_VALID		= 0x80,
+	TPM_STS_COMMAND_READY	= 0x40,
+	TPM_STS_GO		= 0x20,
+	TPM_STS_DATA_AVAIL	= 0x10,
+	TPM_STS_DATA_EXPECT	= 0x08,
+	TPM_STS_SELF_TEST_DONE	= 0x04,
+	TPM_STS_RESPONSE_RETRY	= 0x02
 };
 
 struct tpm_tis_command {
@@ -123,25 +123,25 @@ static int xapea00x_tpm_transfer(struct xapea00x_device *dev,
 
 		for (i = 0; i < TPM_RETRY; i++) {
 			retval = xapea00x_spi_transfer(dev, header, header, 1,
-			                               1, 0);
+						       1, 0);
 			if (retval)
 				goto out;
 			if ((header[0] & 0x01) == 00)
 				break;
 		}
-		
+
 		if (i == TPM_RETRY) {
 			retval = -ETIMEDOUT;
 			goto out;
 		}
 	}
-	
+
 	retval = xapea00x_spi_transfer(dev, out, in, len, 0, 0);
 	if (retval)
 		goto out;
 
 out:
-        return retval;
+	return retval;
 }
 
 /**
@@ -156,7 +156,7 @@ out:
  * Return: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_read_bytes(struct xapea00x_device *dev, u32 addr,
-                                   void *result, u16 len)
+				   void *result, u16 len)
 {
 	return xapea00x_tpm_transfer(dev, addr, result, NULL, len);
 }
@@ -173,7 +173,7 @@ static int xapea00x_tpm_read_bytes(struct xapea00x_device *dev, u32 addr,
  * Return: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_write_bytes(struct xapea00x_device *dev, u32 addr,
-                                    void *data, u16 len)
+				    void *data, u16 len)
 {
 	return xapea00x_tpm_transfer(dev, addr, NULL, data, len);
 }
@@ -221,12 +221,14 @@ static int xapea00x_tpm_write8(struct xapea00x_device *dev, u32 addr, u8 data)
  *
  * Return: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_tpm_read32(struct xapea00x_device *dev, u32 addr, u32 *result)
+static int xapea00x_tpm_read32(struct xapea00x_device *dev, u32 addr,
+			       u32 *result)
 {
-	u32 result_le;
+	__le32 result_le;
 	int retval;
 
-	retval = xapea00x_tpm_read_bytes(dev, addr, &result_le, 4);
+	retval = xapea00x_tpm_read_bytes(dev, addr, &result_le,
+					 sizeof(result_le));
 	if (retval)
 		goto out;
 
@@ -252,10 +254,10 @@ out:
  */
 static int xapea00x_tpm_write32(struct xapea00x_device *dev, u32 addr, u32 data)
 {
-	u32 data_le;
+	__le32 data_le;
 
 	data_le = __cpu_to_le32(data);
-	return xapea00x_tpm_write_bytes(dev, addr, &data_le, 4);
+	return xapea00x_tpm_write_bytes(dev, addr, &data_le, sizeof(data_le));
 }
 
 /**
@@ -271,8 +273,8 @@ static int xapea00x_tpm_write32(struct xapea00x_device *dev, u32 addr, u32 data)
  * Result: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_wait_reg8(struct xapea00x_device *dev,
-                                  u8 addr, u8 flags,
-                                  int timeout_msecs)
+				  u8 addr, u8 flags,
+				  int timeout_msecs)
 {
 	unsigned long stop = jiffies + msecs_to_jiffies(timeout_msecs);
 	u8 reg;
@@ -314,8 +316,8 @@ static int xapea00x_tpm_request_locality0(struct xapea00x_device *dev)
 		goto out;
 
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_ACCESS_0,
-                                        TPM_ACCESS_ACTIVE_LOCALITY,
-                                        TPM2_TIMEOUT_A);
+					TPM_ACCESS_ACTIVE_LOCALITY,
+					TPM2_TIMEOUT_A);
 
 out:
 	return retval;
@@ -332,7 +334,7 @@ out:
 static int xapea00x_tpm_release_locality0(struct xapea00x_device *dev)
 {
 	return xapea00x_tpm_write8(dev, TPM_ACCESS_0,
-	                           TPM_ACCESS_ACTIVE_LOCALITY);
+				   TPM_ACCESS_ACTIVE_LOCALITY);
 }
 
 /**
@@ -369,12 +371,12 @@ out:
  *
  * N.B., the command may not fill the entire buffer. This function
  * parses the command to determine its actual size.
- * 
+ *
  * Context: !in_interrupt()
  *
  * Result: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_tpm_send(struct xapea00x_device *dev, void* buf, u32 len)
+static int xapea00x_tpm_send(struct xapea00x_device *dev, void *buf, u32 len)
 {
 	struct tpm_tis_command *cmd = buf;
 	u32 size, burst;
@@ -382,7 +384,7 @@ static int xapea00x_tpm_send(struct xapea00x_device *dev, void* buf, u32 len)
 
 	/* wait for TPM to be ready for command */
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_COMMAND_READY,
-	                                TPM2_TIMEOUT_B);
+					TPM2_TIMEOUT_B);
 	if (retval)
 		goto err;
 
@@ -399,12 +401,13 @@ static int xapea00x_tpm_send(struct xapea00x_device *dev, void* buf, u32 len)
 		xapea00x_tpm_burst_count(dev, &burst);
 		burst = min(burst, size);
 
-		retval = xapea00x_tpm_write_bytes(dev, TPM_DATA_FIFO_0, buf, burst);
+		retval = xapea00x_tpm_write_bytes(dev, TPM_DATA_FIFO_0, buf,
+						  burst);
 		if (retval)
 			goto cancel;
 
 		retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_VALID,
-		                                TPM2_TIMEOUT_C);
+						TPM2_TIMEOUT_C);
 		if (retval)
 			goto cancel;
 
@@ -435,21 +438,21 @@ err:
  *
  * N.B., the result may not fill the entire buffer. The caller must
  * parse the response header to determine its actual size.
- * 
+ *
  * Context: !in_interrupt()
  *
  * Result: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_tpm_recv(struct xapea00x_device *dev, void* buf, u32 len)
+static int xapea00x_tpm_recv(struct xapea00x_device *dev, void *buf, u32 len)
 {
 	struct tpm_tis_command *cmd = buf;
 	u32 burst;
-        u32 size;
+	u32 size;
 	int retval;
 
 	/* wait for TPM to have data available */
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_DATA_AVAIL,
-	                                TPM2_TIMEOUT_C);
+					TPM2_TIMEOUT_C);
 	if (retval)
 		goto cancel;
 
@@ -458,8 +461,9 @@ static int xapea00x_tpm_recv(struct xapea00x_device *dev, void* buf, u32 len)
 		retval = -EINVAL;
 		goto cancel;
 	}
-	
-	retval = xapea00x_tpm_read_bytes(dev, TPM_DATA_FIFO_0, buf, TIS_HEADER_LEN);
+
+	retval = xapea00x_tpm_read_bytes(dev, TPM_DATA_FIFO_0, buf,
+					 TIS_HEADER_LEN);
 	if (retval)
 		goto cancel;
 
@@ -472,13 +476,14 @@ static int xapea00x_tpm_recv(struct xapea00x_device *dev, void* buf, u32 len)
 
 	size -= TIS_HEADER_LEN;
 	buf   = &cmd->body;
-            
+
 	/* read the body */
 	while (size > TIS_HEADER_LEN) {
 		xapea00x_tpm_burst_count(dev, &burst);
 		burst = min(burst, size);
 
-		retval = xapea00x_tpm_read_bytes(dev, TPM_DATA_FIFO_0, buf, burst);
+		retval = xapea00x_tpm_read_bytes(dev, TPM_DATA_FIFO_0, buf,
+						 burst);
 		if (retval)
 			goto cancel;
 
@@ -488,7 +493,7 @@ static int xapea00x_tpm_recv(struct xapea00x_device *dev, void* buf, u32 len)
 
 	/* wait for valid */
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_VALID,
-	                                TPM2_TIMEOUT_C);
+					TPM2_TIMEOUT_C);
 	if (retval)
 		goto err;
 
@@ -510,12 +515,13 @@ err:
  *
  * N.B., the command and result may not fill the entire buffer. The
  * caller must parse the response header to determine its actual size.
- * 
+ *
  * Context: !in_interrupt()
  *
  * Result: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_tpm_transmit(struct xapea00x_device *dev, void* buf, u32 len)
+static int xapea00x_tpm_transmit(struct xapea00x_device *dev, void *buf,
+				 u32 len)
 {
 	int retval;
 
@@ -528,7 +534,7 @@ static int xapea00x_tpm_transmit(struct xapea00x_device *dev, void* buf, u32 len
 		goto release;
 
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_DATA_AVAIL,
-	                                TIS_LONG_TIMEOUT);
+					TIS_LONG_TIMEOUT);
 	if (retval)
 		goto cancel;
 
@@ -569,12 +575,12 @@ out:
  * Result: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
-	                            u16 tag, u32 cc, void* body, u32 body_len,
-	                            u32 *rc, void* result, u32 result_len,
-	                            u32* actual_len)
+				     u16 tag, u32 cc, void *body, u32 body_len,
+				     u32 *rc, void *result, u32 result_len,
+				     u32 *actual_len)
 {
 	struct tpm_tis_command *cmd;
-	void* buf;
+	void *buf;
 	int buflen, cmdlen, retval;
 
 	buflen = TIS_MAX_BUF + 4;
@@ -582,7 +588,8 @@ static int xapea00x_tpm_transmit_cmd(struct xapea00x_device *dev,
 
 	if (body_len + TIS_HEADER_LEN > cmdlen) {
 		retval = -E2BIG;
-		pr_notice("transmit_cmd: body_len + TIS_HEADER_LEN > cmdlen (%d)", cmdlen);
+		pr_notice("transmit_cmd: body_len + TIS_HEADER_LEN > cmdlen (%d)",
+			  cmdlen);
 		goto out;
 	}
 
@@ -642,10 +649,11 @@ out:
  * Result: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_transmit_cmd_simple(struct xapea00x_device *dev,
-	                                    u16 tag, u32 cc,
-	                                    void* body, u32 len, u32 *rc)
+					    u16 tag, u32 cc,
+					    void *body, u32 len, u32 *rc)
 {
-	return xapea00x_tpm_transmit_cmd(dev, tag, cc, body, len, rc, NULL, 0, NULL);
+	return xapea00x_tpm_transmit_cmd(dev, tag, cc, body, len, rc, NULL, 0,
+					 NULL);
 }
 
 /*******************************************************************************
@@ -667,12 +675,12 @@ static int xapea00x_tpm_startup(struct xapea00x_device *dev)
 	int retval;
 
 	retval = xapea00x_tpm_transmit_cmd_simple(dev, TPM2_ST_NO_SESSIONS,
-	                                          TPM2_CC_STARTUP, body,
-	                                          sizeof(body), &rc);
+						  TPM2_CC_STARTUP, body,
+						  sizeof(body), &rc);
 	if (retval)
 		goto out;
 
-	if ((rc != TPM_RC_SUCCESS) && (rc != TPM_RC_INITIALIZE)) {
+	if (rc != TPM_RC_SUCCESS && rc != TPM_RC_INITIALIZE) {
 		retval = -EIO;
 		goto out;
 	}
@@ -698,8 +706,8 @@ static int xapea00x_tpm_self_test(struct xapea00x_device *dev)
 	int retval;
 
 	retval = xapea00x_tpm_transmit_cmd_simple(dev, TPM2_ST_NO_SESSIONS,
-	                                          TPM2_CC_SELF_TEST, body,
-	                                          sizeof(body), &rc);
+						  TPM2_CC_SELF_TEST, body,
+						  sizeof(body), &rc);
 	if (retval)
 		goto out;
 
@@ -709,7 +717,7 @@ static int xapea00x_tpm_self_test(struct xapea00x_device *dev)
 	}
 
 	retval = xapea00x_tpm_wait_reg8(dev, TPM_STS_0, TPM_STS_SELF_TEST_DONE,
-	                                TIS_LONG_TIMEOUT);
+					TIS_LONG_TIMEOUT);
 	if (retval) {
 		retval = -EIO;
 		goto out;
@@ -720,7 +728,7 @@ out:
 }
 
 /**
- * xapea00x_tpm_dictionary_attack_lock_reset - executes the
+ * xapea00x_tpm_dict_attack_lock_reset - executes the
  * TPM2_DictionaryAttackLockReset command.
  * @dev: pointer to the device
  *
@@ -728,23 +736,25 @@ out:
  *
  * Result: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_tpm_dictionary_attack_lock_reset(struct xapea00x_device *dev)
+static int
+xapea00x_tpm_dict_attack_lock_reset(struct xapea00x_device *dev)
 {
 	u8 body[17] = { 0x40, 0x00, 0x00, 0x0A, // TPM_RH_LOCKOUT
-	                0x00, 0x00, 0x00, 0x09, // authorizationSize
-	                0x40, 0x00, 0x00, 0x09, // TPM_RS_PW 
-	                0x00, 0x00,             // nonce size
-	                                        // nonce
-	                0x01,                   // session attributes
-	                0x00, 0x00              // payload size
-	                                        // payload
-	              };
+			0x00, 0x00, 0x00, 0x09, // authorizationSize
+			0x40, 0x00, 0x00, 0x09, // TPM_RS_PW
+			0x00, 0x00,		// nonce size
+						// nonce
+			0x01,			// session attributes
+			0x00, 0x00		// payload size
+						// payload
+		      };
 	u32 rc;
 	int retval;
 
-	retval = xapea00x_tpm_transmit_cmd_simple(dev, TPM2_ST_SESSIONS,
-	                                          TPM2_CC_DICTIONARY_ATTACK_LOCK_RESET,
-	                                          body, sizeof(body), &rc);
+	retval = xapea00x_tpm_transmit_cmd_simple(dev,
+						  TPM2_ST_SESSIONS,
+						  TPM2_CC_DICT_ATTACK_LOCK_RST,
+						  body, sizeof(body), &rc);
 	if (retval)
 		goto out;
 
@@ -768,9 +778,9 @@ out:
  * Result: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
-	                           void* bytes)
+				   void *bytes)
 {
-	u16 body;
+	__be16 body;
 	u8 *buf;
 	u32 buf_len, result_len;
 	u32 rc;
@@ -787,9 +797,10 @@ static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
 		body = __cpu_to_be16(len);
 
 		retval = xapea00x_tpm_transmit_cmd(dev, TPM2_ST_NO_SESSIONS,
-		                                   TPM2_CC_GET_RANDOM,
-		                                   &body, sizeof(body),
-		                                   &rc, buf, buf_len, &result_len);
+						   TPM2_CC_GET_RANDOM,
+						   &body, sizeof(body),
+						   &rc, buf, buf_len,
+						   &result_len);
 
 		if (retval)
 			goto free;
@@ -799,7 +810,7 @@ static int xapea00x_tpm_get_random(struct xapea00x_device *dev, u16 len,
 			goto free;
 		}
 
-		result_len = __be16_to_cpu(*(u16*)buf);
+		result_len = __be16_to_cpu(*(__be16 *)buf);
 		if (result_len > len) {
 			retval = -E2BIG;
 			goto free;
@@ -832,19 +843,19 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 {
 	u8 password[16];
 	u8 body[35] = { 0x40, 0x00, 0x00, 0x0C, // TPM_RH_PLATFORM
-	                0x00, 0x00, 0x00, 0x09, // authorizationSize
-	                0x40, 0x00, 0x00, 0x09, // TPM_RS_PW 
-	                0x00, 0x00,             // nonce size
-	                                        // nonce
-	                0x01,                   // session attributes
-	                0x00, 0x00,             // old auth payload size
-	                                        // old auth payload
-	                0x00, 0x10,             // new auth payload size
-	                0x00, 0x00, 0x00, 0x00, // new auth payload
-	                0x00, 0x00, 0x00, 0x00, // new auth payload
-	                0x00, 0x00, 0x00, 0x00, // new auth payload
-	                0x00, 0x00, 0x00, 0x00  // new auth payload
-	              };
+			0x00, 0x00, 0x00, 0x09, // authorizationSize
+			0x40, 0x00, 0x00, 0x09, // TPM_RS_PW
+			0x00, 0x00,		// nonce size
+						// nonce
+			0x01,			// session attributes
+			0x00, 0x00,		// old auth payload size
+						// old auth payload
+			0x00, 0x10,		// new auth payload size
+			0x00, 0x00, 0x00, 0x00, // new auth payload
+			0x00, 0x00, 0x00, 0x00, // new auth payload
+			0x00, 0x00, 0x00, 0x00, // new auth payload
+			0x00, 0x00, 0x00, 0x00	// new auth payload
+		      };
 	u32 rc;
 	int retval;
 
@@ -858,8 +869,8 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 	memcpy(body + 19, password, sizeof(password));
 
 	retval = xapea00x_tpm_transmit_cmd_simple(dev, TPM2_ST_SESSIONS,
-	                                          TPM2_CC_HIERARCHY_CHANGE_AUTH,
-	                                           &body, sizeof(body), &rc);
+						  TPM2_CC_HIERARCHY_CHANGE_AUTH,
+						  &body, sizeof(body), &rc);
 	if (retval)
 		goto out;
 
@@ -873,7 +884,7 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 
 out:
 	memset(password, 0, sizeof(password));
-        memset(body, 0, sizeof(body));
+	memset(body, 0, sizeof(body));
 	return retval;
 }
 
@@ -895,7 +906,7 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 
 	/* wait for TPM to be ready */
 	retval =  xapea00x_tpm_wait_reg8(dev, TPM_ACCESS_0, TPM_ACCESS_VALID,
-	                                 TPM2_TIMEOUT_A);
+					 TPM2_TIMEOUT_A);
 	if (retval)
 		goto out;
 
@@ -903,21 +914,19 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	retval = xapea00x_tpm_startup(dev);
 	if (retval) {
 		dev_err(&dev->interface->dev, "TPM startup failed with %d\n",
-		        retval);
+			retval);
 		goto out;
 	}
-	dev_info(&dev->interface->dev, "TPM startup complete\n");
 
 	/* issue TPM2_SELF_TEST command */
 	retval = xapea00x_tpm_self_test(dev);
 	if (retval) {
 		dev_err(&dev->interface->dev, "TPM self-test failed with %d\n",
-		        retval);
+			retval);
 		goto out;
 	}
-	dev_info(&dev->interface->dev, "TPM self-test complete\n");
 
-	/* 
+	/*
 	 * The TPM will enter dictionary lockout mode if turned off
 	 * too many times without a proper shutdown. For the
 	 * "thumb-drive"-esque demo devices, this happens whenever it
@@ -929,10 +938,11 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	 */
 	if (dev->pid == USB_PRODUCT_ID_XAPEA001 ||
 	    dev->pid == USB_PRODUCT_ID_XAPEA002) {
-		retval = xapea00x_tpm_dictionary_attack_lock_reset(dev);
+		retval = xapea00x_tpm_dict_attack_lock_reset(dev);
 		if (retval) {
 			dev_err(&dev->interface->dev,
-			        "Resetting TPM lockout failed with %d\n", retval);
+				"Resetting TPM lockout failed with %d\n",
+				retval);
 			goto out;
 		}
 	}
@@ -941,8 +951,8 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 	retval = xapea00x_tpm_randomize_platform_auth(dev);
 	if (retval) {
 		dev_err(&dev->interface->dev,
-	                "Setting TPM platform auth failed with %d\n",
-		        retval);
+			"Setting TPM platform auth failed with %d\n",
+			retval);
 		goto out;
 	}
 

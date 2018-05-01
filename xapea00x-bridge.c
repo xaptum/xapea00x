@@ -1,6 +1,6 @@
 /* XAP-EA-00x driver for Linux
  *
- *  Copyright (c) 2017 Xaptum, Inc.
+ *  Copyright (c) 2017-2018 Xaptum, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,35 +20,35 @@
 
 #include "xapea00x.h"
 
-#define XAPEA00X_BR_CMD_READ              0x00
-#define XAPEA00X_BR_CMD_WRITE             0x01
-#define XAPEA00X_BR_CMD_WRITEREAD         0x02
+#define XAPEA00X_BR_CMD_READ			0x00
+#define XAPEA00X_BR_CMD_WRITE			0x01
+#define XAPEA00X_BR_CMD_WRITEREAD		0x02
 
-#define XAPEA00X_BR_BREQTYP_SET           0x40
+#define XAPEA00X_BR_BREQTYP_SET		0x40
 
-#define XAPEA00X_BR_BREQ_SET_GPIO_VALUES  0x21
-#define XAPEA00X_BR_BREQ_SET_GPIO_CS      0x25
-#define XAPEA00X_BR_BREQ_SET_SPI_WORD     0x31
+#define XAPEA00X_BR_BREQ_SET_GPIO_VALUES	0x21
+#define XAPEA00X_BR_BREQ_SET_GPIO_CS		0x25
+#define XAPEA00X_BR_BREQ_SET_SPI_WORD		0x31
 
-#define XAPEA00X_BR_USB_TIMEOUT           1000 // msecs
+#define XAPEA00X_BR_USB_TIMEOUT		1000 // msecs
 
-#define XAPEA00X_BR_CS_DISABLED           0x00
+#define XAPEA00X_BR_CS_DISABLED		0x00
 
 /*******************************************************************************
  * Bridge USB transfers
  */
 
 struct xapea00x_br_bulk_command {
-	__be16 reserved1;
+	__u16  reserved1;
 	__u8   command;
 	__u8   reserved2;
-	__be32 length;
+	__le32 length;
 } __attribute__((__packed__));
 
 /**
  * xapea00x_br_prep_bulk_command - Prepares the bulk command header with
  * the supplied values.
- * @header: pointer to header to prepare
+ * @hdr: pointer to header to prepare
  * @command: the command id for the command
  * @length: length in bytes of the command data
  *
@@ -56,17 +56,17 @@ struct xapea00x_br_bulk_command {
  *
  * Return: If successful, 0. Otherwise a negative error number.
  */
-static void xapea00x_br_prep_bulk_command(struct xapea00x_br_bulk_command *header,
-                                          u8 command, int length)
+static void xapea00x_br_prep_bulk_command(struct xapea00x_br_bulk_command *hdr,
+					  u8 command, int length)
 {
-	header->reserved1 = 0;
-	header->command   = command;
-	header->reserved2 = 0;
-	header->length    = __cpu_to_le32(length);
+	hdr->reserved1 = 0;
+	hdr->command   = command;
+	hdr->reserved2 = 0;
+	hdr->length    = __cpu_to_le32(length);
 }
 
 /**
- * xapea00x_br_bulk_write - Issues a builk write to the bridge chip.
+ * xapea00x_br_bulk_write - Issues a bulk write to the bridge chip.
  * @dev: pointer to the device to write to
  * @command: the command started by this write (WRITE, READ, WRITE_READ)
  * @data: pointer to the data to write. Must be DMA capable (e.g.,
@@ -78,8 +78,8 @@ static void xapea00x_br_prep_bulk_command(struct xapea00x_br_bulk_command *heade
  * Return: If successful, 0. Otherwise a negative error number.
  */
 static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
-                                  struct xapea00x_br_bulk_command *header,
-                                  const void *data, int len)
+				  struct xapea00x_br_bulk_command *header,
+				  const void *data, int len)
 {
 	u8 *buf;
 	unsigned int pipe;
@@ -87,8 +87,7 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 
 	buf_len = sizeof(struct xapea00x_br_bulk_command) + len;
 	buf = kzalloc(buf_len, GFP_KERNEL);
-	if (!buf)
-	{
+	if (!buf) {
 		retval = -ENOMEM;
 		goto out;
 	}
@@ -98,15 +97,9 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 
 	pipe = usb_sndbulkpipe(dev->udev, dev->bulk_out->bEndpointAddress);
 	retval = usb_bulk_msg(dev->udev, pipe, buf, buf_len, &actual_len,
-	                      XAPEA00X_BR_USB_TIMEOUT);
-	if (retval) {
-		dev_warn(&dev->interface->dev,
-		         "%s: usb_bulk_msg() failed with %d\n",
-		         __func__, retval);
+			      XAPEA00X_BR_USB_TIMEOUT);
+	if (retval)
 		goto free_buf;
-	}
-
-	retval = 0;
 
 free_buf:
 	kzfree(buf);
@@ -124,7 +117,8 @@ out:
  *
  * Return: If successful, 0. Otherwise a negative error code.
  */
-static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int len)
+static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void *data,
+				 int len)
 {
 	unsigned int pipe;
 	void *buf;
@@ -138,17 +132,12 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void* data, int le
 
 	pipe = usb_rcvbulkpipe(dev->udev, dev->bulk_in->bEndpointAddress);
 	retval = usb_bulk_msg(dev->udev, pipe, buf, len, &actual_len,
-	                      XAPEA00X_BR_USB_TIMEOUT);
+			      XAPEA00X_BR_USB_TIMEOUT);
 
-	if (retval) {
-		dev_warn(&dev->interface->dev,
-		         "%s: usb_bulk_msg() failed with %d\n",
-		         __func__, retval);
+	if (retval)
 		goto free_buf;
-	}
 
 	memcpy(data, buf, actual_len);
-	retval = 0;
 
 free_buf:
 	kzfree(buf);
@@ -175,18 +164,12 @@ out:
  * Return: If successful, 0. Otherwise a negative error code.
  */
 static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
-                                  u16 wValue, u16 wIndex, u8 *data, u16 len)
+				  u16 wValue, u16 wIndex, u8 *data, u16 len)
 {
 	unsigned int pipe;
 	void *buf;
 	int retval;
 
-	/* control_msg buffer must be dma-capable (e.g.k kmalloc-ed,
-	 * not stack).	Copy data into such buffer here, so we can use
-	 * simpler stack allocation in the callers - we have no
-	 * performance concerns given the small buffers and low
-	 * throughputs of this device.
-	 */
 	buf = kzalloc(len, GFP_KERNEL);
 	if (!buf) {
 		retval = -ENOMEM;
@@ -196,13 +179,10 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 
 	pipe = usb_sndctrlpipe(dev->udev, 0);
 	retval = usb_control_msg(dev->udev, pipe, bRequest,
-	                         XAPEA00X_BR_BREQTYP_SET, wValue, wIndex,
-	                         buf, len, XAPEA00X_BR_USB_TIMEOUT);
-	if (retval < 0) {
-		dev_warn(&dev->interface->dev,
-		         "usb_control_msg() failed with %d\n", retval);
+				 XAPEA00X_BR_BREQTYP_SET, wValue, wIndex,
+				 buf, len, XAPEA00X_BR_USB_TIMEOUT);
+	if (retval < 0)
 		goto free_buf;
-	}
 
 	retval = 0;
 
@@ -229,9 +209,10 @@ out:
  * Return: If successful, 0. Otherwise a negative error number.
  */
 static int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin,
-                                      u8 value)
+				      u8 value)
 {
 	u8 data[4] = { 0, 0, 0, 0 };
+
 	switch (pin) {
 	case 10:
 	case  9:
@@ -252,9 +233,10 @@ static int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin,
 	case  0:
 		data[1] = value << (pin + 3);
 		data[3] = 1 << (pin + 3);
+		break;
 	}
 	return xapea00x_br_ctrl_write(dev, XAPEA00X_BR_BREQ_SET_GPIO_VALUES,
-	                              0, 0, data, 4);
+				      0, 0, data, 4);
 }
 
 /**
@@ -269,11 +251,12 @@ static int xapea00x_br_set_gpio_value(struct xapea00x_device *dev, u8 pin,
  * Return: If successful, 0. Otherwise a negative error number.
  */
 static int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin,
-                                   u8 control)
+				   u8 control)
 {
 	u8 data[2] = { pin, control };
+
 	return xapea00x_br_ctrl_write(dev, XAPEA00X_BR_BREQ_SET_GPIO_CS,
-	                              0, 0, data, 2);
+				      0, 0, data, 2);
 }
 
 /*******************************************************************************
@@ -281,9 +264,9 @@ static int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin,
  */
 /**
  * xapea00x_br_disable_cs - disable the built-in chip select
- * capability of the specified channel.  It does not support holding
+ * capability of the specified channel. It does not support holding
  * the CS active between SPI transfers, a feature required for the
- * TPM.  Instead, we manually control the CS pin as a GPIO.
+ * TPM. Instead, we manually control the CS pin as a GPIO.
  * @dev: pointer to the device containing the bridge whose cs to disable
  * @channel: the SPI channel whose cs to disable
  *
@@ -294,7 +277,7 @@ static int xapea00x_br_set_gpio_cs(struct xapea00x_device *dev, u8 pin,
 int xapea00x_br_disable_cs(struct xapea00x_device *dev, u8 channel)
 {
 	return xapea00x_br_set_gpio_cs(dev, channel,
-	                               XAPEA00X_BR_CS_DISABLED);
+				       XAPEA00X_BR_CS_DISABLED);
 }
 
 /**
@@ -341,7 +324,7 @@ int xapea00x_br_deassert_cs(struct xapea00x_device *dev, u8 channel)
  *
  * Return: If successful, 0. Otherwise a negative error number.
  */
-int xapea00x_br_spi_read(struct xapea00x_device *dev, void* rx_buf, int len)
+int xapea00x_br_spi_read(struct xapea00x_device *dev, void *rx_buf, int len)
 {
 	struct xapea00x_br_bulk_command header;
 	int retval;
@@ -364,8 +347,8 @@ out:
  *	    kmalloc-ed, not stack).
  * @len: length in bytes of the data to write
  */
-int xapea00x_br_spi_write(struct xapea00x_device *dev, const void* tx_buf,
-                          int len)
+int xapea00x_br_spi_write(struct xapea00x_device *dev, const void *tx_buf,
+			  int len)
 {
 	struct xapea00x_br_bulk_command header;
 	int retval;
@@ -390,8 +373,8 @@ int xapea00x_br_spi_write(struct xapea00x_device *dev, const void* tx_buf,
  *
  * Return: If successful, 0. Otherwise a negative error number.
  */
-int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void* tx_buf,
-                               void* rx_buf, int len)
+int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void *tx_buf,
+			       void *rx_buf, int len)
 {
 	struct xapea00x_br_bulk_command header;
 	int retval;

@@ -1,6 +1,6 @@
 /* XAP-EA-00x driver for Linux
  *
- *  Copyright (c) 2017 Xaptum, Inc.
+ *  Copyright (c) 2017-2018 Xaptum, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  *
  */
+
+#ifndef _XAPEA00X_H
+#define _XAPEA00X_H
 
 #include <linux/kernel.h>
 #include <linux/kref.h>
@@ -66,16 +69,18 @@ int xapea00x_br_disable_cs(struct xapea00x_device *dev, u8 channel);
 int xapea00x_br_assert_cs(struct xapea00x_device *dev, u8 channel);
 int xapea00x_br_deassert_cs(struct xapea00x_device *dev, u8 channel);
 
-int xapea00x_br_spi_read(struct xapea00x_device *dev, void* rx_buf, int len);
-int xapea00x_br_spi_write(struct xapea00x_device *dev, const void* tx_buf,
-                          int len);
-int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void* tx_buf,
-                               void* rx_buf, int len);
+int xapea00x_br_spi_read(struct xapea00x_device *dev, void *rx_buf, int len);
+int xapea00x_br_spi_write(struct xapea00x_device *dev, const void *tx_buf,
+			  int len);
+int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void *tx_buf,
+			       void *rx_buf, int len);
 
 /* Shared SPI function */
 int xapea00x_spi_transfer(struct xapea00x_device *dev,
-                          const void *tx_buf, void *rx_buf, u32 len,
-                          int cs_hold, u16 delay_usecs);
+			  const void *tx_buf, void *rx_buf, u32 len,
+			  int cs_hold, u16 delay_usecs);
 
 /* Shared TPM functions */
 int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev);
+
+#endif /* _XAPEA00X_H */
