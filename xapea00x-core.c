@@ -448,14 +448,10 @@ static void xapea00x_disconnect(struct usb_interface *interface)
 }
 
 static struct usb_driver xapea00x_driver = {
-	.name                 = "xapea00x",
-	.probe                = xapea00x_probe,
-	.disconnect           = xapea00x_disconnect,
-	.suspend              = NULL,
-	.resume               = NULL,
-	.reset_resume         = NULL,
-	.id_table             = xapea00x_devices,
-	.supports_autosuspend = 0
+	.name		= KBUILD_MODNAME,
+	.probe		= xapea00x_probe,
+	.disconnect	= xapea00x_disconnect,
+	.id_table	= xapea00x_devices
 };
 
 module_usb_driver(xapea00x_driver);
@@ -463,5 +459,3 @@ module_usb_driver(xapea00x_driver);
 MODULE_AUTHOR("David R. Bild <david.bild@xaptum.com>");
 MODULE_DESCRIPTION("Xaptum XAP-EA-00x ENF Access card");
 MODULE_LICENSE("GPL");
-
-MODULE_ALIAS("xapea00x");
