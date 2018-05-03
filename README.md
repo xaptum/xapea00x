@@ -4,7 +4,7 @@ A Linux kernel driver for the Xaptum ENF Access card, a TPM 2.0-based
 hardware card used to authenticate IoT devices and gateways to the
 Xaptum Edge Network Fabric.
 
-### Supported Product IDs
+## Supported Product IDs
 
 | Model # | Form Factor | USB Vendor ID | USB Product ID |
 |---------|-------------|---------------|----------------|
@@ -12,7 +12,7 @@ Xaptum Edge Network Fabric.
 | XAP-EA-002 | USB | 0x2FE0 | 0x8BDE |
 | XAP-EA-003 | Mini PCI-e | 0x2FE0 | 0x8BEE |
 
-### Runtime Dependencies
+## Runtime Dependencies
 
 The necessary TPM 2.0 support was added to the 4.9 kernel, so this is
 the earliest supported version.
@@ -28,13 +28,28 @@ Further, kernels 4.9 through 4.11 contain a buggy version anyway.
 This repo contains the source for a working version of `TCG_TIS_SPI`
 to make out-of-tree building easy.
 
-### Build Dependencies
+## Installation
+
+### Debian (Stretch)
+
+``` bash
+# Install the Xaptum API repo GPG signing key.
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys c615bfaa7fe1b4ca
+
+# Add the repository to your APT sources.
+echo "deb http://dl.bintray.com/xaptum/deb stretch main" > /etc/apt/sources.list.d/xaptum.list
+
+# Install the library
+sudo apt-get install xapea00x-dkms
+```
+
+### From Source
+
+#### Build Dependencies
 
 * `make`
 * `gcc`
 * Linux kernel headers for your distribution
-
-### Installation
 
 #### xapea00x
 
