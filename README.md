@@ -70,7 +70,7 @@ sudo make modules_install
 ```
 
 ## License
-Copyright (c) 2017 Xaptum, Inc.
+Copyright (c) 2017-2018 Xaptum, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
