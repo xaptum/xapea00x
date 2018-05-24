@@ -32,6 +32,14 @@
 
 #define XAPEA00X_BR_USB_TIMEOUT		1000 // msecs
 
+/*
+ * The bridge sometimes fails if consecutive USB transfers
+ * are issued too close together. We delay a few microseconds
+ * after each transfer to give the bridge time to finish
+ * processing.
+ */
+#define XAPEA00X_BR_USB_DELAY			250 // usecs
+
 #define XAPEA00X_BR_CS_DISABLED		0x00
 
 /*******************************************************************************
@@ -101,6 +109,8 @@ static int xapea00x_br_bulk_write(struct xapea00x_device *dev,
 	if (retval)
 		goto free_buf;
 
+	udelay(XAPEA00X_BR_USB_DELAY);
+
 free_buf:
 	kzfree(buf);
 
@@ -138,6 +148,7 @@ static int xapea00x_br_bulk_read(struct xapea00x_device *dev, void *data,
 		goto free_buf;
 
 	memcpy(data, buf, actual_len);
+	udelay(XAPEA00X_BR_USB_DELAY);
 
 free_buf:
 	kzfree(buf);
@@ -184,6 +195,7 @@ static int xapea00x_br_ctrl_write(struct xapea00x_device *dev, u8 bRequest,
 	if (retval < 0)
 		goto free_buf;
 
+	udelay(XAPEA00X_BR_USB_DELAY);
 	retval = 0;
 
 free_buf:
