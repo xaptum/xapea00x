@@ -76,6 +76,7 @@ int xapea00x_br_spi_write_read(struct xapea00x_device *dev, const void *tx_buf,
 			       void *rx_buf, int len);
 
 /* Shared SPI function */
+int xapea00x_spi_probe(struct xapea00x_device *dev);
 int xapea00x_spi_transfer(struct xapea00x_device *dev,
 			  const void *tx_buf, void *rx_buf, u32 len,
 			  int cs_hold, u16 delay_usecs);

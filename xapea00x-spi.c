@@ -38,35 +38,38 @@ static int xapea00x_spi_setup(struct spi_device *spi)
 
 	dev = spi_master_get_devdata(spi->master);
 
+	mutex_lock(&dev->usb_mutex);
+	if (!dev->interface) {
+		retval = -ENODEV;
+		goto out;
+	}
+
 	/* Verify that this is the TPM device */
 	if (spi->chip_select != 0) {
 		retval = -EINVAL;
 		goto err;
 	}
 
-	/* Set the SPI parameters for the TPM channel. */
-	retval = xapea00x_br_set_spi_word(dev, 0, XAPEA00X_TPM_SPI_WORD);
-	if (retval)
-		goto err;
-
 	/*
 	 * Disable auto chip select for the TPM channel.
-	 * Must be done after setting the SPI parameters.
 	 */
-	retval = xapea00x_br_set_gpio_cs(dev, 0, XAPEA00X_GPIO_CS_DISABLED);
+	retval = xapea00x_br_disable_cs(dev, 0);
 	if (retval)
 		goto err;
 
 	/* De-assert chip select for the TPM channel. */
-	retval = xapea00x_br_set_gpio_value(dev, 0, 1);
+	retval = xapea00x_br_deassert_cs(dev, 0);
 	if (retval)
 		goto err;
 
-	return 0;
+	goto out;;
 
 err:
 	dev_err(&dev->interface->dev,
 		"configuring SPI channel failed with %d\n", retval);
+
+out:
+	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -90,7 +93,7 @@ int xapea00x_spi_transfer(struct xapea00x_device *dev,
 	int retval;
 
 	/* Assert chip select */
-	retval = xapea00x_br_set_gpio_value(dev, 0, 0);
+	retval = xapea00x_br_assert_cs(dev, 0);
 	if (retval)
 		goto out;
 
@@ -109,7 +112,7 @@ int xapea00x_spi_transfer(struct xapea00x_device *dev,
 
 	/* Deassert chip select, if requested */
 	if (!cs_hold)
-		retval = xapea00x_br_set_gpio_value(dev, 0, 1);
+		retval = xapea00x_br_deassert_cs(dev, 0);
 
 	/* Delay for the requested time */
 	udelay(delay_usecs);
@@ -136,6 +139,12 @@ static int xapea00x_spi_transfer_one_message(struct spi_master *master,
 
 	dev = spi_master_get_devdata(master);
 
+	mutex_lock(&dev->usb_mutex);
+	if (!dev->interface) {
+		retval = -ENODEV;
+		goto out;
+	}
+
 	/* perform all transfers */
 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
 		is_last = list_is_last(&xfer->transfer_list, &msg->transfers);
@@ -156,6 +165,8 @@ static int xapea00x_spi_transfer_one_message(struct spi_master *master,
 out:
 	msg->status = retval;
 	spi_finalize_current_message(master);
+
+	mutex_unlock(&dev->usb_mutex);
 	return retval;
 }
 
@@ -165,7 +176,7 @@ out:
  *
  * Return: If successful, 0. Otherwise a negative error number.
  */
-static int xapea00x_spi_probe(struct xapea00x_device *dev)
+int xapea00x_spi_probe(struct xapea00x_device *dev)
 {
 	struct spi_master *spi_master;
 	int retval;
@@ -182,7 +193,7 @@ static int xapea00x_spi_probe(struct xapea00x_device *dev)
 	spi_master->max_speed_hz = 12 * 1000 * 1000; /* 12 MHz */
 
 	spi_master->bus_num = -1; /* dynamically assigned */
-	spi_master->num_chipselect = XAPEA00X_NUM_CS;
+	spi_master->num_chipselect = 1;
 	spi_master->mode_bits = SPI_MODE_0;
 
 	spi_master->flags = 0;
@@ -195,7 +206,6 @@ static int xapea00x_spi_probe(struct xapea00x_device *dev)
 		goto free_spi;
 
 	dev->spi_master = spi_master;
-
 	return 0;
 
 free_spi:
