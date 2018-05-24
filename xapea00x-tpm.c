@@ -52,6 +52,8 @@
 #define TPM_RC_SUCCESS			0x000
 #define TPM_RC_INITIALIZE		0x100
 
+#define TPM_RC_BAD_AUTH		0x9A2
+
 enum tis_access {
 	TPM_ACCESS_VALID		= 0x80,
 	TPM_ACCESS_ACTIVE_LOCALITY	= 0x20,
@@ -874,9 +876,13 @@ static int xapea00x_tpm_randomize_platform_auth(struct xapea00x_device *dev)
 	if (retval)
 		goto out;
 
-	if (rc != TPM_RC_SUCCESS) {
+	if (rc == TPM_RC_BAD_AUTH) {
+		dev_warn(&dev->interface->dev,
+			 "Platform hierarchy auth was already set. Not changing\n");
+	} else if (rc != TPM_RC_SUCCESS) {
 		retval = -EIO;
-		pr_notice("HierarchyChangeAuth result code: %d\n", rc);
+		dev_err(&dev->interface->dev,
+			"HierarchyChangeAuth failed with %d\n", rc);
 		goto out;
 	}
 
