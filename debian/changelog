@@ -1,3 +1,9 @@
+xapea00x (0.1.1-1) unstable; urgency=medium
+
+  *  Fix USB timeout errors.
+
+ -- David R. Bild <david.bild@xaptum.com>  Thu, 24 May 2018 14:11:28 +0000
+
 xapea00x (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
