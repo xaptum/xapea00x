@@ -16,9 +16,7 @@ override_dh_install:
 
 override_dh_auto_install:
 	mkdir -p $(DKMS_DIR)/xapea00x-$(DEB_VERSION_UPSTREAM)/
-	mkdir -p $(DKMS_DIR)/tpm_tis_spi-$(DEB_VERSION_UPSTREAM)/
 	install -D -m 644 *.c *.h Kbuild Kconfig Makefile $(DKMS_DIR)/xapea00x-$(DEB_VERSION_UPSTREAM)/
-	install -D -m 644 tpm_tis_spi/* $(DKMS_DIR)/tpm_tis_spi-$(DEB_VERSION_UPSTREAM)/
 
 override_dh_dkms:
 	dh_dkms -V $(DEB_VERSION_UPSTREAM)

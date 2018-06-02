@@ -1,6 +1,0 @@
-PACKAGE_NAME="tpm_tis_spi"
-PACKAGE_VERSION="#MODULE_VERSION#"
-BUILT_MODULE_NAME[0]=tpm_tis_spi
-DEST_MODULE_LOCATION[0]=/kernel/drivers/char/tpm
-REMAKE_INITRD=yes
-AUTOINSTALL=yes
