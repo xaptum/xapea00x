@@ -200,12 +200,11 @@ int xapea00x_spi_probe(struct xapea00x_device *dev)
 	spi_master->setup = xapea00x_spi_setup;
 	spi_master->transfer_one_message = xapea00x_spi_transfer_one_message;
 
-	retval = spi_register_master(spi_master);
-
+	dev->spi_master = spi_master;
+	retval = spi_register_master(dev->spi_master);
 	if (retval)
 		goto free_spi;
 
-	dev->spi_master = spi_master;
 	return 0;
 
 free_spi:
