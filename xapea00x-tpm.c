@@ -953,6 +953,10 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 		}
 	}
 
+	/* skip randomize platform authorization if disable by user */
+	if (set_platform_auth == 0)
+		goto out;
+
 	/* set the platform authorization to random bytes */
 	retval = xapea00x_tpm_randomize_platform_auth(dev);
 	if (retval) {

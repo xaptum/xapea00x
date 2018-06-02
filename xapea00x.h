@@ -24,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/kref.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
@@ -36,6 +37,8 @@
 #define USB_PRODUCT_ID_XAPEA001        0x8BDE
 #define USB_PRODUCT_ID_XAPEA002        0x8BDE
 #define USB_PRODUCT_ID_XAPEA003        0x8BEE
+
+extern int set_platform_auth;
 
 struct xapea00x_device {
 	struct kref kref;

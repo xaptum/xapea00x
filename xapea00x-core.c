@@ -25,6 +25,10 @@
 
 #define kref_to_xapea00x(k) container_of(k, struct xapea00x_device, kref)
 
+int set_platform_auth = 1;
+module_param(set_platform_auth, int, 0660);
+MODULE_PARM_DESC(set_platform_auth, "If non-zero, the platform hierarchy auth password will be set to random value");
+
 static void xapea00x_delete(struct kref *kref)
 {
 	struct xapea00x_device *dev = kref_to_xapea00x(kref);
