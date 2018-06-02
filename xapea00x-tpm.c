@@ -471,7 +471,7 @@ static int xapea00x_tpm_recv(struct xapea00x_device *dev, void *buf, u32 len)
 
 	/* extract size of body from header */
 	size = __be32_to_cpu(cmd->size);
-	if (len < size) {
+	if (len < size || size < TIS_HEADER_LEN) {
 		retval = -EINVAL;
 		goto cancel;
 	}
