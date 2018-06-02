@@ -62,7 +62,7 @@ static int xapea00x_spi_setup(struct spi_device *spi)
 	if (retval)
 		goto err;
 
-	goto out;;
+	goto out;
 
 err:
 	dev_err(&dev->interface->dev,
