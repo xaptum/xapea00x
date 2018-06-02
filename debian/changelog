@@ -1,17 +1,5 @@
-xapea00x (0.1.2-1) unstable; urgency=medium
+xapea00x-issuer (0.1.2-1) unstable; urgency=medium
 
-  * Configure modules to use TPM as hardware rng
+  * Initial release
 
- -- David R. Bild <david.bild@xaptum.com>  Thu, 24 May 2018 18:14:58 +0000
-
-xapea00x (0.1.1-1) unstable; urgency=medium
-
-  *  Fix USB timeout errors.
-
- -- David R. Bild <david.bild@xaptum.com>  Thu, 24 May 2018 14:11:28 +0000
-
-xapea00x (0.1.0-1) unstable; urgency=medium
-
-  * Initial release.
-
- -- David R. Bild <david.bild@xaptum.com>  Wed, 02 May 2018 16:42:23 -0500
+ -- David R. Bild <david.bild@xaptum.com>  Sat, 02 Jun 2018 21:03:46 +0000
