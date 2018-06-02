@@ -471,7 +471,7 @@ static int xapea00x_tpm_recv(struct xapea00x_device *dev, void *buf, u32 len)
 
 	/* extract size of body from header */
 	size = __be32_to_cpu(cmd->size);
-	if (len < size) {
+	if (len < size || size < TIS_HEADER_LEN) {
 		retval = -EINVAL;
 		goto cancel;
 	}
@@ -952,6 +952,10 @@ int xapea00x_tpm_platform_initialize(struct xapea00x_device *dev)
 			goto out;
 		}
 	}
+
+	/* skip randomize platform authorization if disable by user */
+	if (set_platform_auth == 0)
+		goto out;
 
 	/* set the platform authorization to random bytes */
 	retval = xapea00x_tpm_randomize_platform_auth(dev);

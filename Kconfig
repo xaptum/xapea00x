@@ -4,9 +4,8 @@
 
 config  XAPEA00X
         tristate "Xaptum ENF Access Module"
-        depends on USB_SUPPORT
+        depends on USB_SUPPORT && TCG_TPM
         select SPI
-        select TCG_TPM
         select TCG_TIS_SPI
         ---help---
 
