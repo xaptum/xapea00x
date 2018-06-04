@@ -1,3 +1,9 @@
+xapea00x-issuer (0.1.2-2) unstable; urgency=medium
+
+  * Do not use issuer suffix in DKMS package name
+
+ -- David R. Bild <david.bild@xaptum.com>  Mon, 04 Jun 2018 15:15:29 +0000
+
 xapea00x-issuer (0.1.2-1) unstable; urgency=medium
 
   * Initial release
