@@ -1,4 +1,4 @@
-PACKAGE_NAME="xapea00x-issuer"
+PACKAGE_NAME="xapea00x"
 PACKAGE_VERSION="#MODULE_VERSION#"
 BUILT_MODULE_NAME[0]=xapea00x
 DEST_MODULE_LOCATION[0]=/kernel/drivers/usb/misc
