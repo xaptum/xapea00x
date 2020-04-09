@@ -1,6 +1,6 @@
 /* XAP-EA-00x driver for Linux
  *
- *  Copyright (c) 2017-2018 Xaptum, Inc.
+ *  Copyright (c) 2017-2020 Xaptum, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -36,6 +36,7 @@
 #define USB_PRODUCT_ID_XAPEA001        0x8BDE
 #define USB_PRODUCT_ID_XAPEA002        0x8BDE
 #define USB_PRODUCT_ID_XAPEA003        0x8BEE
+#define USB_PRODUCT_ID_XAPEA004        0x8BFE
 
 struct xapea00x_device {
 	struct kref kref;
