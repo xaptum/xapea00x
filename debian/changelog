@@ -1,3 +1,10 @@
+xapea00x-issuer (0.1.2-3) unstable; urgency=medium
+
+  [ Zane Beckwith ]
+  * debian: First version of issuer for buster.
+
+ -- Zane Beckwith <zane.beckwith@xaptum.com>  Wed, 11 Nov 2020 21:42:30 +0000
+
 xapea00x-issuer (0.1.2-2) unstable; urgency=medium
 
   * Do not use issuer suffix in DKMS package name
