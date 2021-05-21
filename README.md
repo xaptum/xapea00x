@@ -11,6 +11,7 @@ Xaptum Edge Network Fabric.
 | XAP-EA-001 | USB | 0x10C4 | 0x8BDE |
 | XAP-EA-002 | USB | 0x2FE0 | 0x8BDE |
 | XAP-EA-003 | Mini PCI-e | 0x2FE0 | 0x8BEE |
+| XAP-EA-004 | MultiTech MTAC | 0x2FE0 | 0x8BFE |
 
 ## Runtime Dependencies
 
@@ -70,7 +71,7 @@ sudo make modules_install
 ```
 
 ## License
-Copyright (c) 2017-2018 Xaptum, Inc.
+Copyright (c) 2017-2020 Xaptum, Inc.
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License

@@ -1,6 +1,6 @@
 /* XAP-EA-00x driver for Linux
  *
- *  Copyright (c) 2017-2018 Xaptum, Inc.
+ *  Copyright (c) 2017-2020 Xaptum, Inc.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -153,6 +153,7 @@ static const struct usb_device_id xapea00x_devices[] = {
 	{ USB_DEVICE(USB_VENDOR_ID_SILABS, USB_PRODUCT_ID_XAPEA001) },
 	{ USB_DEVICE(USB_VENDOR_ID_XAPTUM, USB_PRODUCT_ID_XAPEA002) },
 	{ USB_DEVICE(USB_VENDOR_ID_XAPTUM, USB_PRODUCT_ID_XAPEA003) },
+	{ USB_DEVICE(USB_VENDOR_ID_XAPTUM, USB_PRODUCT_ID_XAPEA004) },
 	{ }
 };
 MODULE_DEVICE_TABLE(usb, xapea00x_devices);
