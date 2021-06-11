@@ -31,14 +31,18 @@ to make out-of-tree building easy.
 
 ## Installation
 
-### Debian (Stretch)
+### Debian (Stretch, Buster) and Ubuntu (Bionic)
 
 ``` bash
-# Install the Xaptum API repo GPG signing key.
+DIST=$(lsb_release -cs)
+
+# Install the Xaptum API repo GPG signing key
+sudo apt-get install dirmngr
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys c615bfaa7fe1b4ca
 
-# Add the repository to your APT sources.
-echo "deb http://dl.bintray.com/xaptum/deb stretch main" > /etc/apt/sources.list.d/xaptum.list
+# Add the repository to your APT sources
+echo "deb https://xaptum.jfrog.io/artifactory/debian ${DIST} main" | sudo tee /etc/apt/sources.list.d/xaptum.list
+sudo apt-get update
 
 # Install the library
 sudo apt-get install xapea00x-dkms
